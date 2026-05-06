@@ -1,0 +1,13 @@
+name = "upi-orchestrator-api"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+FRONTEND_URL = "https://free-pi.pages.dev"
+NODE_ENV = "production"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "upi-payments"
+database_id = "2e566ba9-2c96-4f75-8ff5-202d60f98fcd"
