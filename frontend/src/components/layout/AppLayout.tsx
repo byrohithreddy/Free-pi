@@ -182,9 +182,11 @@ export function AppLayout({ children }: AppLayoutProps) {
                 <p className="text-[11px] text-white/50 mt-1 leading-relaxed">
                   Help keep this project running — your support funds maintenance, improvements, and ongoing availability.
                 </p>
-                <Button className="w-full mt-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold h-10 group">
-                  Donate now
-                  <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                <Button asChild className="w-full mt-4 bg-primary hover:bg-primary/90 text-white rounded-xl text-xs font-bold h-10 group">
+                  <Link href="/donate">
+                    Donate now
+                    <ArrowRight className="ml-2 h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </Link>
                 </Button>
               </div>
               <div className="absolute -right-4 -bottom-4 h-24 w-24 bg-primary/20 blur-3xl rounded-full" />

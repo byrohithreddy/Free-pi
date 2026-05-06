@@ -15,6 +15,7 @@ import Analytics from "@/pages/analytics";
 import Pay from "@/pages/pay";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
+import Donate from "@/pages/Donate";
 import { useEffect } from "react";
 import { setBaseUrl } from "@workspace/api-client-react";
 
@@ -75,6 +76,7 @@ function Router() {
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeys} />} />
       
       <Route path="/pay/:transactionId" component={Pay} />
+      <Route path="/donate" component={Donate} />
       
       <Route component={NotFound} />
     </Switch>

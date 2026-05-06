@@ -744,8 +744,8 @@ export default function Landing() {
                   <span className="app-badge">Paytm</span>
                   <span className="app-badge">BHIM</span>
                   <span className="app-badge">Mobikwik</span>
-                  <span className="app-badge">PayZapp</span>
-                  <span className="app-badge">Liqui Gold</span>
+                  <span className="app-badge">CRED</span>
+                  <span className="app-badge">Freecharge</span>
               </div>
           </div>
       </section>
@@ -886,7 +886,7 @@ export default function Landing() {
                           <ul>
                               <li><Link href="/dashboard">Dashboard</Link></li>
                               <li><Link href="/dashboard/api-keys">API Keys</Link></li>
-                              <li><Link href="/status">Status Checker</Link></li>
+                              <li><Link href="/analytics">Analytics</Link></li>
                           </ul>
                       </div>
                       <div className="footer-col">
@@ -894,17 +894,17 @@ export default function Landing() {
                           <ul>
                               <li><a href="#">Documentation</a></li>
                               <li><a href="#">Support</a></li>
-                              <li><a href="#">GitHub</a></li>
+                              <li><a href="https://github.com/byrohithreddy/Free-pi.git">GitHub</a></li>
                           </ul>
                       </div>
                   </div>
                   <div className="footer-right">
                       <p>Donate to keep Free Pi running</p>
-                      <a href="#" className="btn btn-outline">Donate with UPI</a>
+                      <Link href="/donate" className="btn btn-outline">Donate with UPI</Link>
                   </div>
               </div>
               <div style={{borderTop: "1px solid var(--border)", paddingTop: "32px", textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem"}}>
-                  &copy; 2026 Free Pi. Built with ❤️ for Indian developers.
+                  &copy; 2026 Free Pi. Built with ❤️ for Indian Micro Enterprises.
               </div>
           </div>
       </footer>
