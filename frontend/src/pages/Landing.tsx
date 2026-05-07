@@ -742,6 +742,8 @@ export default function Landing() {
                   <span className="app-badge">Google Pay</span>
                   <span className="app-badge">PhonePe</span>
                   <span className="app-badge">Paytm</span>
+                  <span className="app-badge">PhonePe</span>
+                  <span className="app-badge">Paytm</span>
                   <span className="app-badge">BHIM</span>
                   <span className="app-badge">Mobikwik</span>
                   <span className="app-badge">CRED</span>
@@ -823,7 +825,7 @@ export default function Landing() {
                           <span className="faq-icon">+</span>
                       </div>
                       <div className="faq-answer">
-                          <p>All UPI apps including Google Pay, PhonePe, Paytm, BHIM, Amazon Pay and any app that supports the UPI protocol.</p>
+                          <p>All UPI apps including Google Pay, PhonePe, Paytm, PhonePe, Paytm, BHIM, Amazon Pay and any app that supports the UPI protocol.</p>
                       </div>
                   </div>
                   <div className="faq-item" onClick={handleFaqClick}>

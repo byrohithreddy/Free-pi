@@ -140,7 +140,7 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
             <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border border-border">
               <QrCode className="h-16 w-16 text-primary mb-4" />
               <div className="text-sm text-center text-muted-foreground mb-4">
-                Link generated successfully. Customers can pay via GPay, PhonePe, Paytm, or any UPI app.
+                Link generated successfully. Customers can pay via GPay, or any UPI app.
               </div>
               <div className="flex w-full gap-2">
                 <Input readOnly value={createdUrl} className="font-mono text-xs" />

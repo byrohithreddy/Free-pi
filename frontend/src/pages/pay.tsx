@@ -13,17 +13,14 @@ function buildAppUrls(genericUrl: string) {
   const base = `intent://pay?${params}#Intent;scheme=upi`;
   return {
     gpay:     `${base};package=com.google.android.apps.nbu.paisa.user;end`,
-    phonepe:  `${base};package=com.phonepe.app;end`,
-    paytm:    `${base};package=net.one97.paytm;end`,
     mobikwik: `${base};package=com.mobikwik_new;end`,
-    generic: genericUrl,
   };
 }
 
 const UPI_APPS = [
   {
     key: "gpay" as const,
-    label: "GPay",
+    label: "GooglePay",
     logo: (
       <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none">
         <path d="M24 4C12.95 4 4 12.95 4 24s8.95 20 20 20 20-8.95 20-20S35.05 4 24 4z" fill="#4285F4"/>
@@ -31,27 +28,6 @@ const UPI_APPS = [
         <path d="M24 35c2.97 0 5.46-.98 7.28-2.67l-3.58-2.77c-.98.66-2.23 1.05-3.7 1.05-2.84 0-5.25-1.92-6.11-4.5h-3.7v2.86A11 11 0 0024 35z" fill="#34A853"/>
         <path d="M17.89 26.11A6.6 6.6 0 0117.55 24c0-.73.13-1.44.34-2.11v-2.86h-3.7A11 11 0 0013 24c0 1.77.43 3.45 1.19 4.97l3.7-2.86z" fill="#FBBC05"/>
         <path d="M24 17.5c1.6 0 3.04.55 4.17 1.63l3.13-3.13C29.46 14.19 26.97 13 24 13a11 11 0 00-9.81 6.03l3.7 2.86c.86-2.58 3.27-4.39 6.11-4.39z" fill="#EA4335"/>
-      </svg>
-    ),
-  },
-  {
-    key: "phonepe" as const,
-    label: "PhonePe",
-    logo: (
-      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none">
-        <rect width="48" height="48" rx="12" fill="#5F259F"/>
-        <path d="M30 14h-6.5l-7.5 12 7.5 8H30a6 6 0 000-12h-3l3-8z" fill="white"/>
-      </svg>
-    ),
-  },
-  {
-    key: "paytm" as const,
-    label: "Paytm",
-    logo: (
-      <svg viewBox="0 0 48 48" className="h-6 w-6" fill="none">
-        <rect width="48" height="48" rx="12" fill="#00BAF2"/>
-        <text x="7" y="32" fontSize="16" fontWeight="bold" fill="white" fontFamily="Arial">Pay</text>
-        <text x="7" y="42" fontSize="10" fontWeight="bold" fill="#002970" fontFamily="Arial">tm</text>
       </svg>
     ),
   },
@@ -381,7 +357,7 @@ export default function Pay() {
                 <span>or open directly in</span>
                 <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="flex justify-center gap-2">
                 {UPI_APPS.map((app) => (
                   <a
                     key={app.key}
@@ -392,17 +368,6 @@ export default function Pay() {
                     <span className="text-[11px] font-medium leading-none">{app.label}</span>
                   </a>
                 ))}
-              </div>
-              <a
-                href={appUrls.generic}
-                className="block w-full text-center py-2.5 rounded-xl border border-slate-200 text-sm text-slate-500 hover:bg-slate-50 transition-colors"
-              >
-                Open in any UPI app
-              </a>
-              <div className="text-center p-2 rounded-lg bg-red-50 border border-red-100">
-                <p className="text-[10px] font-bold text-red-600 uppercase tracking-wider">
-                  BHIM app user can scan the QR and pay
-                </p>
               </div>
             </div>
           )}

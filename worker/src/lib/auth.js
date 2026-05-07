@@ -193,8 +193,6 @@ export function generateUPIIntentURLs(vpa, payeeName, amountPaise, orderId, txnR
   return {
     generic,
     gpay: `${intentBase};package=com.google.android.apps.nbu.paisa.user;end`,
-    phonepe: `${intentBase};package=com.phonepe.app;end`,
-    paytm: `${intentBase};package=net.one97.paytm;end`,
     bhim: `${intentBase};package=in.org.npci.upiapp;end`,
   };
 }
