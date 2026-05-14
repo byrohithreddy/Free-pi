@@ -69,7 +69,7 @@ async function handleCreatePayment(request, env) {
   const body = await parseJsonBody(request);
   if (!body) return jsonResponse({ error: 'Invalid JSON body', code: 'VALIDATION_ERROR' }, 400);
 
-  const { amount, orderId, description, customerName, customerEmail, customerPhone } = body;
+  const { amount, orderId, description } = body;
 
   if (!amount || !orderId) {
     return jsonResponse({ error: 'Missing required fields: amount, orderId', code: 'VALIDATION_ERROR' }, 400);
@@ -100,9 +100,6 @@ async function handleCreatePayment(request, env) {
     currency: 'INR',
     orderId,
     description: description || null,
-    customerName: customerName || null,
-    customerEmail: customerEmail || null,
-    customerPhone: customerPhone || null,
     upiIntentUrl,
     qrCodeDataUrl,
     status: 'PENDING',
@@ -117,6 +114,10 @@ async function handleCreatePayment(request, env) {
   return jsonResponse({
     transactionId: transaction.transaction_id,
     paymentUrl,
+    redirectUrl: paymentUrl,
+    amount: transaction.amount,
+    orderId: transaction.order_id,
+    description: transaction.description,
     qrCodeDataUrl,
     upiIntentUrl,
     status: transaction.status,

@@ -189,6 +189,12 @@ export function TransactionDetailModal({ transactionId, open, onOpenChange }: Tr
                   <div className="font-medium">{transaction.customerName}</div>
                 </div>
               )}
+              {transaction.customerEmail && (
+                <div>
+                  <div className="text-muted-foreground mb-1">Customer Email</div>
+                  <div className="font-medium break-all">{transaction.customerEmail}</div>
+                </div>
+              )}
               {transaction.description && (
                 <div className="col-span-2">
                   <div className="text-muted-foreground mb-1">Description</div>

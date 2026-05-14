@@ -71,14 +71,16 @@ export interface CreatePaymentRequest {
   amount: number;
   orderId: string;
   description?: string;
-  customerName?: string;
-  customerEmail?: string;
-  customerPhone?: string;
 }
 
 export interface CreatePaymentResponse {
   transactionId: string;
   paymentUrl: string;
+  redirectUrl: string;
+  /** Amount in paise */
+  amount: number;
+  orderId: string;
+  description?: string;
   qrCodeDataUrl: string;
   upiIntentUrl: string;
   status: string;
@@ -129,7 +131,20 @@ export interface CustomerUtrRequest {
    * @maxLength 22
    */
   utrNumber: string;
+  customerName?: string;
+  customerEmail?: string;
 }
+
+export interface CustomerDetailsRequest {
+  customerName: string;
+  customerEmail: string;
+}
+
+export type SaveCustomerDetails200 = {
+  message: string;
+  customerName: string;
+  customerEmail: string;
+};
 
 export interface ConfirmPaymentRequest {
   notes?: string;
@@ -172,6 +187,8 @@ export interface PublicPaymentDetails {
   qrCodeDataUrl: string;
   upiIntentUrl: string;
   utrNumber?: string;
+  customerName?: string;
+  customerEmail?: string;
   createdAt: string;
   updatedAt: string;
 }

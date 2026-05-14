@@ -159,10 +159,13 @@ export default function ApiKeys() {
         <Card className="border-border shadow-sm bg-card/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Terminal className="h-5 w-5" /> API Usage Example
+              <Terminal className="h-5 w-5" /> API Usage
             </CardTitle>
+            <CardDescription>
+              Create the payment from your server, then redirect the customer to the returned payment page.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <pre className="p-4 rounded-lg bg-muted text-muted-foreground font-mono text-sm overflow-x-auto border border-border/50">
 {`curl -X POST https://api.yourdomain.com/api/payments \\
   -H "Content-Type: application/json" \\
@@ -172,6 +175,27 @@ export default function ApiKeys() {
     "orderId": "ORD-123",
     "description": "Premium Plan"
   }'`}
+            </pre>
+            <pre className="p-4 rounded-lg bg-muted text-muted-foreground font-mono text-sm overflow-x-auto border border-border/50">
+{`{
+  "transactionId": "TXN_20260512_5EAB5DE9",
+  "paymentUrl": "https://yourdomain.com/pay/TXN_20260512_5EAB5DE9",
+  "redirectUrl": "https://yourdomain.com/pay/TXN_20260512_5EAB5DE9",
+  "amount": 50000,
+  "orderId": "ORD-123",
+  "description": "Premium Plan",
+  "qrCodeDataUrl": "https://api.qrserver.com/...",
+  "upiIntentUrl": "upi://pay?pa=merchant@upi&am=500.00...",
+  "status": "PENDING"
+}`}
+            </pre>
+            <pre className="p-4 rounded-lg bg-muted text-muted-foreground font-mono text-sm overflow-x-auto border border-border/50">
+{`// Browser checkout flow
+window.location.href = response.redirectUrl;
+
+// The hosted page collects customer name/email,
+// stores them on the transaction, shows QR/UPI options,
+// and asks the customer to submit their UTR.`}
             </pre>
           </CardContent>
         </Card>

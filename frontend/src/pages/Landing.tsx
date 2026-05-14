@@ -628,12 +628,12 @@ export default function Landing() {
                   <div className="card step-card">
                       <span className="step-number">2</span>
                       <h3>One API Call to Create Payment</h3>
-                      <p>POST to our API with amount and order ID. Get back a UPI intent URL and QR code instantly.</p>
+                      <p>POST amount, order ID, and description. Get back a hosted payment URL to redirect your customer.</p>
                   </div>
                   <div className="card step-card">
                       <span className="step-number">3</span>
                       <h3>Receive Payments</h3>
-                      <p>Customer pays via any UPI app. Confirm with UTR number. Done.</p>
+                      <p>The payment page collects customer name and email, shows QR/UPI options, and captures the UTR for confirmation.</p>
                   </div>
               </div>
           </div>
@@ -642,10 +642,10 @@ export default function Landing() {
       {/* API Preview Section */}
       <section>
           <div className="container">
-              <div className="api-preview">
+                  <div className="api-preview">
                   <div className="api-content">
                       <h2>Integrate in minutes</h2>
-                      <p>No complex SDKs, no heavy libraries. Just standard REST APIs that return exactly what you need to accept payments immediately.</p>
+                      <p>Create a payment from your server, redirect the customer to the hosted payment page, and let Free Pi collect customer details, show the QR, and capture UTR proof.</p>
                       <Link href="/register" className="btn btn-primary">Get Started</Link>
                   </div>
                   <div className="code-block">
@@ -656,11 +656,9 @@ export default function Landing() {
                       </div>
                       <div style={{marginBottom: "24px"}}>
                           {'{'}<br/>
-                          &nbsp;&nbsp;<span className="token key">"amount"</span>: <span className="token number">500.00</span>,<br/>
+                          &nbsp;&nbsp;<span className="token key">"amount"</span>: <span className="token number">50000</span>,<br/>
                           &nbsp;&nbsp;<span className="token key">"orderId"</span>: <span className="token string">"ORD-001"</span>,<br/>
-                          &nbsp;&nbsp;<span className="token key">"description"</span>: <span className="token string">"Premium Plan"</span>,<br/>
-                          &nbsp;&nbsp;<span className="token key">"customerName"</span>: <span className="token string">"Rohith Reddy"</span>,<br/>
-                          &nbsp;&nbsp;<span className="token key">"customerPhone"</span>: <span className="token string">"1234567891"</span><br/>
+                          &nbsp;&nbsp;<span className="token key">"description"</span>: <span className="token string">"Premium Plan"</span><br/>
                           {'}'}
                       </div>
                       <div className="code-header">
@@ -669,10 +667,19 @@ export default function Landing() {
                       <div>
                           {'{'}<br/>
                           &nbsp;&nbsp;<span className="token key">"transactionId"</span>: <span className="token string">"TXN_20260504_5EAB5DE9"</span>,<br/>
-                          &nbsp;&nbsp;<span className="token key">"upiIntentUrl"</span>: <span className="token string">"upi://pay?pa=merchant@upi&am=500.00..."</span>,<br/>
+                          &nbsp;&nbsp;<span className="token key">"paymentUrl"</span>: <span className="token string">"https://yourdomain.com/pay/TXN_20260504_5EAB5DE9"</span>,<br/>
+                          &nbsp;&nbsp;<span className="token key">"redirectUrl"</span>: <span className="token string">"https://yourdomain.com/pay/TXN_20260504_5EAB5DE9"</span>,<br/>
                           &nbsp;&nbsp;<span className="token key">"qrCodeDataUrl"</span>: <span className="token string">"https://api.qrserver.com/..."</span>,<br/>
+                          &nbsp;&nbsp;<span className="token key">"upiIntentUrl"</span>: <span className="token string">"upi://pay?pa=merchant@upi&am=500.00..."</span>,<br/>
                           &nbsp;&nbsp;<span className="token key">"status"</span>: <span className="token string">"PENDING"</span><br/>
                           {'}'}
+                      </div>
+                      <div className="code-header" style={{marginTop: "24px"}}>
+                          <span className="token comment">// Checkout</span>
+                      </div>
+                      <div>
+                          window.location.href = response.redirectUrl;<br/>
+                          <span className="token comment">// Customer enters name/email, pays by QR/UPI, then submits UTR.</span>
                       </div>
                   </div>
               </div>

@@ -23,6 +23,7 @@ import type {
   ConfirmPaymentRequest,
   CreatePaymentRequest,
   CreatePaymentResponse,
+  CustomerDetailsRequest,
   CustomerUtrRequest,
   ErrorResponse,
   HealthStatus,
@@ -36,6 +37,7 @@ import type {
   RegisterRequest,
   RegisterResponse,
   RejectPaymentRequest,
+  SaveCustomerDetails200,
   SubmitCustomerUtr200,
   Transaction,
   UpdateProfileRequest,
@@ -1054,6 +1056,96 @@ export const useRegenerateApiKeys = <
   TContext
 > => {
   return useMutation(getRegenerateApiKeysMutationOptions(options));
+};
+
+/**
+ * @summary Save public payment customer details
+ */
+export const getSaveCustomerDetailsUrl = (transactionId: string) => {
+  return `/api/public/payment/${transactionId}/customer`;
+};
+
+export const saveCustomerDetails = async (
+  transactionId: string,
+  customerDetailsRequest: CustomerDetailsRequest,
+  options?: RequestInit,
+): Promise<SaveCustomerDetails200> => {
+  return customFetch<SaveCustomerDetails200>(
+    getSaveCustomerDetailsUrl(transactionId),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(customerDetailsRequest),
+    },
+  );
+};
+
+export const getSaveCustomerDetailsMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveCustomerDetails>>,
+    TError,
+    { transactionId: string; data: BodyType<CustomerDetailsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveCustomerDetails>>,
+  TError,
+  { transactionId: string; data: BodyType<CustomerDetailsRequest> },
+  TContext
+> => {
+  const mutationKey = ["saveCustomerDetails"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveCustomerDetails>>,
+    { transactionId: string; data: BodyType<CustomerDetailsRequest> }
+  > = (props) => {
+    const { transactionId, data } = props ?? {};
+
+    return saveCustomerDetails(transactionId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveCustomerDetailsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveCustomerDetails>>
+>;
+export type SaveCustomerDetailsMutationBody = BodyType<CustomerDetailsRequest>;
+export type SaveCustomerDetailsMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Save public payment customer details
+ */
+export const useSaveCustomerDetails = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveCustomerDetails>>,
+    TError,
+    { transactionId: string; data: BodyType<CustomerDetailsRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveCustomerDetails>>,
+  TError,
+  { transactionId: string; data: BodyType<CustomerDetailsRequest> },
+  TContext
+> => {
+  return useMutation(getSaveCustomerDetailsMutationOptions(options));
 };
 
 /**

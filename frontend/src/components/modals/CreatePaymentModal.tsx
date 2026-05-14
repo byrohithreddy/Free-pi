@@ -30,8 +30,6 @@ const createPaymentSchema = z.object({
   amount: z.coerce.number().min(1, { message: "Amount must be at least ₹1" }).max(100000, { message: "Amount cannot exceed ₹100,000" }),
   orderId: z.string().min(1, { message: "Order ID is required" }),
   description: z.string().optional(),
-  customerName: z.string().optional(),
-  customerEmail: z.string().email({ message: "Invalid email format" }).optional().or(z.literal("")),
   customerPhone: z.string().optional(),
 });
 
@@ -54,8 +52,6 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
       amount: undefined,
       orderId: `ORD-${Date.now().toString().slice(-6)}`,
       description: "",
-      customerName: "",
-      customerEmail: "",
       customerPhone: "",
     },
   });
@@ -67,8 +63,6 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
           amount: undefined,
           orderId: `ORD-${Date.now().toString().slice(-6)}`,
           description: "",
-          customerName: "",
-          customerEmail: "",
           customerPhone: "",
         });
         setCreatedUrl(null);
@@ -86,7 +80,6 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
         data: {
           ...data,
           amount: amountInPaise,
-          customerEmail: data.customerEmail || undefined,
         },
       },
       {
@@ -203,49 +196,6 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                   </FormItem>
                 )}
               />
-
-              <div className="pt-2 pb-1 border-t border-border mt-2">
-                <h4 className="text-sm font-medium text-muted-foreground mb-3">Customer Details (Optional)</h4>
-                <div className="grid grid-cols-2 gap-4 mb-3">
-                  <FormField
-                    control={form.control}
-                    name="customerName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input placeholder="Name" disabled={createMutation.isPending} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="customerPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Input placeholder="Phone" disabled={createMutation.isPending} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="customerEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input placeholder="Email" type="email" disabled={createMutation.isPending} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
               <DialogFooter className="pt-4 border-t border-border">
                 <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={createMutation.isPending}>
                   Cancel

@@ -134,6 +134,8 @@ export async function updateTransaction(db, id, updates) {
   if (updates.confirmedAt !== undefined) { sets.push('confirmed_at = ?'); values.push(updates.confirmedAt); }
   if (updates.merchantNotes !== undefined) { sets.push('merchant_notes = ?'); values.push(updates.merchantNotes); }
   if (updates.utrNumber !== undefined) { sets.push('utr_number = ?'); values.push(updates.utrNumber); }
+  if (updates.customerName !== undefined) { sets.push('customer_name = ?'); values.push(updates.customerName); }
+  if (updates.customerEmail !== undefined) { sets.push('customer_email = ?'); values.push(updates.customerEmail); }
 
   sets.push("updated_at = datetime('now')");
   values.push(id);
@@ -158,10 +160,10 @@ export async function listTransactions(db, merchantId, { status, search, page = 
 
   if (search) {
     const searchPattern = `%${search}%`;
-    whereClauses.push('(transaction_id LIKE ? OR customer_name LIKE ? OR order_id LIKE ?)');
-    countClauses.push('(transaction_id LIKE ? OR customer_name LIKE ? OR order_id LIKE ?)');
-    params.push(searchPattern, searchPattern, searchPattern);
-    countParams.push(searchPattern, searchPattern, searchPattern);
+    whereClauses.push('(transaction_id LIKE ? OR customer_name LIKE ? OR customer_email LIKE ? OR order_id LIKE ? OR utr_number LIKE ?)');
+    countClauses.push('(transaction_id LIKE ? OR customer_name LIKE ? OR customer_email LIKE ? OR order_id LIKE ? OR utr_number LIKE ?)');
+    params.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+    countParams.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
   }
 
   const whereStr = whereClauses.join(' AND ');

@@ -102,7 +102,7 @@ export default function Transactions() {
             <div className="relative w-full md:w-72">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search Order ID, UTR..."
+                placeholder="Search order, customer, email, UTR..."
                 className="pl-9 h-9 bg-muted/30 border-border/50 text-sm focus-visible:ring-1 focus-visible:ring-primary"
                 value={searchTerm}
                 onChange={handleSearchChange}
@@ -159,7 +159,14 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell className="text-sm">
                         <div className="truncate max-w-[150px]">
-                          {tx.customerName || tx.customerEmail || <span className="text-muted-foreground/50 italic">Anonymous</span>}
+                          {tx.customerName ? (
+                            <div>
+                              <div className="font-medium truncate">{tx.customerName}</div>
+                              {tx.customerEmail && <div className="text-xs text-muted-foreground truncate">{tx.customerEmail}</div>}
+                            </div>
+                          ) : (
+                            tx.customerEmail || <span className="text-muted-foreground/50 italic">Anonymous</span>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold text-foreground">

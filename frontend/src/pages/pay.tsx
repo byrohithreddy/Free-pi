@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "wouter";
-import { useGetPublicPayment, getGetPublicPaymentQueryKey, useSubmitCustomerUtr } from "@workspace/api-client-react";
+import { useGetPublicPayment, getGetPublicPaymentQueryKey, useSaveCustomerDetails, useSubmitCustomerUtr } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShieldCheck, CheckCircle2, XCircle, AlertCircle, ScanLine, Download, Send } from "lucide-react";
@@ -44,7 +44,17 @@ const UPI_APPS = [
   },
 ];
 
-function UtrForm({ transactionId, onSuccess }: { transactionId: string, onSuccess: (utr: string) => void }) {
+function UtrForm({
+  transactionId,
+  customerName,
+  customerEmail,
+  onSuccess,
+}: {
+  transactionId: string;
+  customerName?: string;
+  customerEmail?: string;
+  onSuccess: (utr: string) => void;
+}) {
   const [utr, setUtr] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +80,15 @@ function UtrForm({ transactionId, onSuccess }: { transactionId: string, onSucces
     }
 
     setError(null);
+    const payload = {
+      utrNumber: trimmed,
+      ...(customerName?.trim() ? { customerName: customerName.trim() } : {}),
+      ...(customerEmail?.trim() ? { customerEmail: customerEmail.trim() } : {}),
+    };
+
     submitUtr({
       transactionId,
-      data: { utrNumber: trimmed },
+      data: payload,
     });
   };
 
@@ -97,26 +113,59 @@ function UtrForm({ transactionId, onSuccess }: { transactionId: string, onSucces
         Submit Payment Proof
       </div>
       <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-        After completing the payment, enter your UPI transaction reference (UTR) to help the merchant confirm faster.
+        Enter the UTR or transaction reference number from your UPI app to confirm your payment.
       </p>
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
-          type="text"
-          value={utr}
-          onChange={(e) => setUtr(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
-          placeholder="Enter UTR / Ref number"
-          maxLength={22}
-          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/50 transition"
-        />
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <div className="space-y-1">
+          <input
+            type="text"
+            value={utr}
+            onChange={(e) => setUtr(e.target.value.replace(/[^a-zA-Z0-9]/g, ""))}
+            placeholder="Enter UTR / Ref number"
+            maxLength={22}
+            className="w-full px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
+          />
+          <p className="text-[11px] text-slate-500 dark:text-slate-400">{utr.length}/22</p>
+        </div>
         <button
           type="submit"
           disabled={loading || utr.trim().length < 6}
-          className="px-4 py-2 rounded-lg bg-[#D4AF37] hover:bg-[#C5A028] active:bg-[#B8961F] text-slate-900 text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="w-full px-4 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {loading ? "…" : "Submit"}
+          {loading ? "…" : "Submit Payment Proof"}
         </button>
       </form>
       {error && <p className="text-xs text-red-500">{error}</p>}
+    </div>
+  );
+}
+
+function StepIndicator({ step }: { step: 1 | 2 | 3 }) {
+  const renderPill = (index: 1 | 2 | 3, label: string) => {
+    const completed = step > index;
+    const active = step === index;
+
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className={`flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold ${completed ? "bg-emerald-600 text-white" : active ? "bg-indigo-600 text-white" : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"}`}
+        >
+          {completed ? "✓" : index}
+        </span>
+        <span className={`text-[11px] font-medium ${active ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
+          {label}
+        </span>
+      </div>
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      {renderPill(1, "Details")}
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+      {renderPill(2, "Payment")}
+      <div className="h-px flex-1 bg-slate-200 dark:bg-slate-700" />
+      {renderPill(3, "Confirm")}
     </div>
   );
 }
@@ -126,6 +175,13 @@ export default function Pay() {
   const [isMobile, setIsMobile] = useState(false);
   const [submittedUtr, setSubmittedUtr] = useState<string | null>(null);
   const [submissionTime, setSubmissionTime] = useState<Date | null>(null);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [customerName, setCustomerName] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [detailsError, setDetailsError] = useState<string | null>(null);
+  const [stepReady, setStepReady] = useState(false);
 
   useEffect(() => {
     const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
@@ -140,6 +196,81 @@ export default function Pay() {
       refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 5000 : false),
     },
   });
+
+  const { mutate: saveCustomerDetails, isPending: savingDetails } = useSaveCustomerDetails({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        setCustomerName(variables.data.customerName);
+        setCustomerEmail(variables.data.customerEmail);
+        setDetailsError(null);
+        setStep(2);
+      },
+      onError: (err: any) => {
+        if (err?.status === 404) {
+          setDetailsError(null);
+          setStep(2);
+          return;
+        }
+
+        setDetailsError(err.data?.error ?? "Unable to save your details. Please try again.");
+      },
+    },
+  });
+
+  useEffect(() => {
+    const paymentStatus = payment?.status as string | undefined;
+    if (paymentStatus === "UTR_SUBMITTED" || payment?.utrNumber) {
+      setStep(3);
+    }
+  }, [payment?.status, payment?.utrNumber]);
+
+  useEffect(() => {
+    if (!payment) return;
+    if (payment.customerName && !customerName) setCustomerName(payment.customerName);
+    if (payment.customerEmail && !customerEmail) setCustomerEmail(payment.customerEmail);
+  }, [payment, customerName, customerEmail]);
+
+  useEffect(() => {
+    setStepReady(false);
+    const timeout = window.setTimeout(() => setStepReady(true), 10);
+    return () => window.clearTimeout(timeout);
+  }, [step]);
+
+  const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+
+  const handleStep1Submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedName = customerName.trim();
+    const trimmedEmail = customerEmail.trim();
+    const nameValidationError = trimmedName.length < 2 ? "Full Name must be at least 2 characters." : null;
+    const emailValidationError = !validateEmail(trimmedEmail) ? "Enter a valid email address." : null;
+
+    setNameError(nameValidationError);
+    setEmailError(emailValidationError);
+
+    if (nameValidationError || emailValidationError) {
+      return;
+    }
+
+    if (!payment?.transactionId) {
+      setDetailsError("Payment details are still loading. Please try again.");
+      return;
+    }
+
+    saveCustomerDetails({
+      transactionId: payment.transactionId,
+      data: {
+        customerName: trimmedName,
+        customerEmail: trimmedEmail,
+      },
+    });
+  };
+
+  const stepTransitionStyle = {
+    opacity: stepReady ? 1 : 0,
+    transform: stepReady ? "translateY(0)" : "translateY(8px)",
+    transition: "opacity 0.2s ease, transform 0.2s ease",
+  };
 
   if (isLoading) {
     return (
@@ -327,63 +458,132 @@ export default function Pay() {
         </CardHeader>
 
         <CardContent className="space-y-5 pb-8">
-          {/* QR Code */}
-          <div className="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-            <div className="flex items-center justify-center gap-2 mb-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
-              <ScanLine className="h-4 w-4" />
-              Scan to Pay
-            </div>
-            <div className="relative bg-white p-3 rounded-xl shadow-sm border border-slate-200">
-              <img src={payment.qrCodeDataUrl} alt="UPI QR Code" className="w-48 h-48 rendering-pixelated" />
-              <a
-                href={payment.qrCodeDataUrl}
-                download={`qr-${payment.transactionId}.png`}
-                className="absolute -bottom-3 -right-3 flex items-center justify-center h-8 w-8 rounded-full bg-white border border-slate-200 shadow-md text-slate-500 hover:text-slate-800 hover:shadow-lg transition-all"
-                title="Download QR Code"
-              >
-                <Download className="h-4 w-4" />
-              </a>
-            </div>
-            <p className="text-center text-xs text-slate-500 mt-5 max-w-[200px] leading-relaxed">
-              Scan with any UPI app to complete payment
-            </p>
+          <div key={step} style={stepTransitionStyle} className="space-y-5">
+            <StepIndicator step={step} />
+
+            {step === 1 && (
+              <div className="space-y-5">
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-5 border border-slate-100 dark:border-slate-800 space-y-4">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Enter your details to continue</p>
+                  <form onSubmit={handleStep1Submit} className="space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Full Name</label>
+                      <input
+                        type="text"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Enter your name"
+                        disabled={savingDetails}
+                        className="w-full px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
+                      />
+                      {nameError && <p className="text-xs text-red-500">{nameError}</p>}
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email Address</label>
+                      <input
+                        type="email"
+                        value={customerEmail}
+                        onChange={(e) => setCustomerEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        disabled={savingDetails}
+                        className="w-full px-3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition"
+                      />
+                      {emailError && <p className="text-xs text-red-500">{emailError}</p>}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={savingDetails}
+                      className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white py-3 text-sm font-semibold transition"
+                    >
+                      {savingDetails ? "Saving..." : "Continue to Payment →"}
+                    </button>
+                    {detailsError && <p className="text-xs text-red-500">{detailsError}</p>}
+                  </form>
+                </div>
+              </div>
+            )}
+
+            {step === 2 && (
+              <div className="space-y-5">
+                <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/50 p-5 border border-slate-100 dark:border-slate-800">
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Hi {customerName || "there"}, complete your payment below</p>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-center gap-2 mb-3 text-slate-700 dark:text-slate-300 font-medium text-sm">
+                    <ScanLine className="h-4 w-4" />
+                    Scan to Pay
+                  </div>
+                  <div className="relative bg-white p-3 rounded-xl shadow-sm border border-slate-200">
+                    <img src={payment.qrCodeDataUrl} alt="UPI QR Code" className="w-48 h-48 rendering-pixelated" />
+                    <a
+                      href={payment.qrCodeDataUrl}
+                      download={`qr-${payment.transactionId}.png`}
+                      className="absolute -bottom-3 -right-3 flex items-center justify-center h-8 w-8 rounded-full bg-white border border-slate-200 shadow-md text-slate-500 hover:text-slate-800 hover:shadow-lg transition-all"
+                      title="Download QR Code"
+                    >
+                      <Download className="h-4 w-4" />
+                    </a>
+                  </div>
+                  <p className="text-center text-xs text-slate-500 mt-5 max-w-[200px] leading-relaxed">
+                    Scan with any UPI app to complete payment
+                  </p>
+                </div>
+
+                {isMobile && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-xs text-slate-400">
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                      <span>or open directly in</span>
+                      <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                    </div>
+                    <div className="flex justify-center gap-2">
+                      {UPI_APPS.map((app) => (
+                        <a
+                          key={app.key}
+                          href={appUrls[app.key]}
+                          className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white border border-slate-200 text-slate-800 shadow-sm hover:shadow-md active:scale-95 transition-all text-center"
+                        >
+                          {app.logo}
+                          <span className="text-[11px] font-medium leading-none">{app.label}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setStep(3)}
+                  className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white py-3 text-sm font-semibold transition"
+                >
+                  I have paid → Enter UTR
+                </button>
+              </div>
+            )}
+
+            {step === 3 && (
+              <div className="space-y-5">
+                <button
+                  type="button"
+                  onClick={() => setStep(2)}
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
+                >
+                  ← Back
+                </button>
+                <UtrForm
+                  transactionId={payment.transactionId}
+                  customerName={customerName}
+                  customerEmail={customerEmail}
+                  onSuccess={(utr) => {
+                    setSubmittedUtr(utr);
+                    setSubmissionTime(new Date());
+                  }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Mobile: per-app deep link buttons */}
-          {isMobile && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-xs text-slate-400">
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                <span>or open directly in</span>
-                <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-              </div>
-              <div className="flex justify-center gap-2">
-                {UPI_APPS.map((app) => (
-                  <a
-                    key={app.key}
-                    href={appUrls[app.key]}
-                    className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white border border-slate-200 text-slate-800 shadow-sm hover:shadow-md active:scale-95 transition-all text-center"
-                  >
-                    {app.logo}
-                    <span className="text-[11px] font-medium leading-none">{app.label}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* UTR / Payment Proof Submission */}
-          <div className="border-t border-slate-100 dark:border-slate-800 pt-5">
-            <UtrForm 
-              transactionId={payment.transactionId} 
-              onSuccess={(utr) => {
-                setSubmittedUtr(utr);
-                setSubmissionTime(new Date());
-              }} 
-            />
-          </div>
-
-          {/* Footer */}
           <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
             <div className="text-[11px] text-slate-400 dark:text-slate-500 flex justify-between">
               <span>Order ID: <span className="font-mono">{payment.orderId}</span></span>
