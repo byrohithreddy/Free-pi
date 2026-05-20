@@ -13,6 +13,7 @@ import {
 import {
   updateMerchant,
   getMerchantStats,
+  getSystemGrowthStats,
 } from '../lib/db.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -20,6 +21,11 @@ export async function handleMerchant(request, env, path, method) {
   // GET /api/merchant/stats
   if (path === '/api/merchant/stats' && method === 'GET') {
     return handleStats(request, env);
+  }
+
+  // GET /api/merchant/admin-growth
+  if (path === '/api/merchant/admin-growth' && method === 'GET') {
+    return handleAdminGrowth(request, env);
   }
 
   // PUT /api/merchant/profile
@@ -33,6 +39,38 @@ export async function handleMerchant(request, env, path, method) {
   }
 
   return jsonResponse({ error: 'Not found' }, 404);
+}
+
+// ---------------------------------------------------------------------------
+// GET /api/merchant/admin-growth
+// ---------------------------------------------------------------------------
+async function handleAdminGrowth(request, env) {
+  if (!isAdminGrowthAuthorized(request, env)) {
+    return jsonResponse({ error: 'Invalid admin credentials', code: 'ADMIN_UNAUTHORIZED' }, 401);
+  }
+
+  const stats = await getSystemGrowthStats(env.DB);
+  return jsonResponse(stats);
+}
+
+function isAdminGrowthAuthorized(request, env) {
+  const header = request.headers.get('Authorization') || '';
+  if (!header.startsWith('Basic ')) return false;
+
+  try {
+    const decoded = atob(header.slice(6));
+    const separatorIndex = decoded.indexOf(':');
+    if (separatorIndex === -1) return false;
+
+    const username = decoded.slice(0, separatorIndex);
+    const password = decoded.slice(separatorIndex + 1);
+    const expectedUsername = env.ADMIN_GROWTH_USERNAME || 'Brucewayne';
+    const expectedPassword = env.ADMIN_GROWTH_PASSWORD || 'Hemaraju@0322';
+
+    return username === expectedUsername && password === expectedPassword;
+  } catch {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------

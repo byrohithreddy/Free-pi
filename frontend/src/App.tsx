@@ -12,6 +12,7 @@ import Transactions from "@/pages/transactions";
 import Settings from "@/pages/settings";
 import ApiKeys from "@/pages/api-keys";
 import Analytics from "@/pages/analytics";
+import Admingrowth from "@/pages/Admingrowth";
 import Pay from "@/pages/pay";
 import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
@@ -72,6 +73,8 @@ function Router() {
       <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
       <Route path="/transactions" component={() => <ProtectedRoute component={Transactions} />} />
       <Route path="/analytics" component={() => <ProtectedRoute component={Analytics} />} />
+      <Route path="/Admingrowth" component={Admingrowth} />
+      <Route path="/admingrowth" component={Admingrowth} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/api-keys" component={() => <ProtectedRoute component={ApiKeys} />} />
       

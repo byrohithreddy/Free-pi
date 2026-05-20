@@ -82,29 +82,55 @@ export async function addMerchantCollected(db, id, amount) {
 // ---------------------------------------------------------------------------
 
 export async function createTransaction(db, data) {
-  const result = await db.prepare(`
-    INSERT INTO transactions (
-      transaction_id, merchant_id, amount, currency, order_id, description,
-      customer_name, customer_email, customer_phone, upi_intent_url,
-      qr_code_data_url, status, transaction_hash
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    RETURNING *
-  `).bind(
-    data.transactionId,
-    data.merchantId,
-    data.amount,
-    data.currency || 'INR',
-    data.orderId,
-    data.description || null,
-    data.customerName || null,
-    data.customerEmail || null,
-    data.customerPhone || null,
-    data.upiIntentUrl,
-    data.qrCodeDataUrl,
-    data.status || 'PENDING',
-    data.transactionHash,
-  ).first();
-  return result;
+  try {
+    const result = await db.prepare(`
+      INSERT INTO transactions (
+        transaction_id, merchant_id, amount, currency, order_id, description,
+        customer_name, customer_email, upi_intent_url,
+        qr_code_data_url, status, transaction_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `).bind(
+      data.transactionId,
+      data.merchantId,
+      data.amount,
+      data.currency || 'INR',
+      data.orderId,
+      data.description || null,
+      data.customerName || null,
+      data.customerEmail || null,
+      data.upiIntentUrl,
+      data.qrCodeDataUrl,
+      data.status || 'PENDING',
+      data.transactionHash,
+    ).first();
+    return result;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!/no such column: transaction_hash/i.test(message)) throw err;
+
+    const result = await db.prepare(`
+      INSERT INTO transactions (
+        transaction_id, merchant_id, amount, currency, order_id, description,
+        customer_name, customer_email, upi_intent_url,
+        qr_code_data_url, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      RETURNING *
+    `).bind(
+      data.transactionId,
+      data.merchantId,
+      data.amount,
+      data.currency || 'INR',
+      data.orderId,
+      data.description || null,
+      data.customerName || null,
+      data.customerEmail || null,
+      data.upiIntentUrl,
+      data.qrCodeDataUrl,
+      data.status || 'PENDING',
+    ).first();
+    return result;
+  }
 }
 
 export async function findTransactionByTxnId(db, transactionId) {
@@ -223,5 +249,118 @@ export async function getMerchantStats(db, merchantId) {
     totalCollected: allConfirmedResult?.value || 0,
     totalTransactions: totalCountResult?.value || 0,
     recentTransactions: recentTxns?.results || [],
+  };
+}
+
+export async function getSystemGrowthStats(db) {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todayStr = startOfToday.toISOString();
+
+  const [
+    merchantCount,
+    transactionCount,
+    totalAmount,
+    confirmedAmount,
+    pendingCount,
+    confirmedCount,
+    rejectedCount,
+    todayTransactions,
+    todayAmount,
+    todayMerchants,
+    dailyGrowth,
+    topMerchants,
+    recentTransactions,
+  ] = await Promise.all([
+    db.prepare('SELECT COUNT(*) as value FROM merchants').first(),
+    db.prepare('SELECT COUNT(*) as value FROM transactions').first(),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as value FROM transactions').first(),
+    db.prepare("SELECT COALESCE(SUM(amount), 0) as value FROM transactions WHERE status = 'CONFIRMED'").first(),
+    db.prepare("SELECT COUNT(*) as value FROM transactions WHERE status = 'PENDING'").first(),
+    db.prepare("SELECT COUNT(*) as value FROM transactions WHERE status = 'CONFIRMED'").first(),
+    db.prepare("SELECT COUNT(*) as value FROM transactions WHERE status = 'REJECTED'").first(),
+    db.prepare('SELECT COUNT(*) as value FROM transactions WHERE created_at >= ?').bind(todayStr).first(),
+    db.prepare('SELECT COALESCE(SUM(amount), 0) as value FROM transactions WHERE created_at >= ?').bind(todayStr).first(),
+    db.prepare('SELECT COUNT(*) as value FROM merchants WHERE created_at >= ?').bind(todayStr).first(),
+    db.prepare(`
+      SELECT
+        date(created_at) as date,
+        COUNT(*) as transaction_count,
+        COALESCE(SUM(amount), 0) as total_amount,
+        COALESCE(SUM(CASE WHEN status = 'CONFIRMED' THEN amount ELSE 0 END), 0) as confirmed_amount
+      FROM transactions
+      WHERE created_at >= datetime('now', '-13 days')
+      GROUP BY date(created_at)
+      ORDER BY date(created_at)
+    `).all(),
+    db.prepare(`
+      SELECT
+        m.id,
+        m.business_name,
+        m.email,
+        COUNT(t.id) as transaction_count,
+        COALESCE(SUM(t.amount), 0) as total_amount,
+        COALESCE(SUM(CASE WHEN t.status = 'CONFIRMED' THEN t.amount ELSE 0 END), 0) as confirmed_amount
+      FROM merchants m
+      LEFT JOIN transactions t ON t.merchant_id = m.id
+      GROUP BY m.id
+      ORDER BY total_amount DESC, transaction_count DESC
+      LIMIT 5
+    `).all(),
+    db.prepare(`
+      SELECT
+        t.*,
+        m.business_name as merchant_business_name,
+        m.email as merchant_email
+      FROM transactions t
+      LEFT JOIN merchants m ON m.id = t.merchant_id
+      ORDER BY t.created_at DESC
+      LIMIT 8
+    `).all(),
+  ]);
+
+  const totalTransactions = transactionCount?.value || 0;
+  const confirmedTransactions = confirmedCount?.value || 0;
+
+  return {
+    totalMerchants: merchantCount?.value || 0,
+    totalTransactions,
+    totalAmount: totalAmount?.value || 0,
+    confirmedAmount: confirmedAmount?.value || 0,
+    pendingTransactions: pendingCount?.value || 0,
+    confirmedTransactions,
+    rejectedTransactions: rejectedCount?.value || 0,
+    todayTransactions: todayTransactions?.value || 0,
+    todayAmount: todayAmount?.value || 0,
+    todayMerchants: todayMerchants?.value || 0,
+    averageTransactionAmount: totalTransactions > 0 ? Math.round((totalAmount?.value || 0) / totalTransactions) : 0,
+    successRate: totalTransactions > 0 ? Math.round((confirmedTransactions / totalTransactions) * 1000) / 10 : 0,
+    dailyGrowth: (dailyGrowth?.results || []).map((day) => ({
+      date: day.date,
+      transactionCount: day.transaction_count || 0,
+      totalAmount: day.total_amount || 0,
+      confirmedAmount: day.confirmed_amount || 0,
+    })),
+    topMerchants: (topMerchants?.results || []).map((merchant) => ({
+      id: String(merchant.id),
+      businessName: merchant.business_name,
+      email: merchant.email,
+      transactionCount: merchant.transaction_count || 0,
+      totalAmount: merchant.total_amount || 0,
+      confirmedAmount: merchant.confirmed_amount || 0,
+    })),
+    recentTransactions: (recentTransactions?.results || []).map((transaction) => ({
+      id: String(transaction.id),
+      transactionId: transaction.transaction_id,
+      merchantId: String(transaction.merchant_id),
+      merchantName: transaction.merchant_business_name || 'Merchant',
+      merchantEmail: transaction.merchant_email || null,
+      orderId: transaction.order_id,
+      amount: Number(transaction.amount),
+      status: transaction.status,
+      customerName: transaction.customer_name || null,
+      customerEmail: transaction.customer_email || null,
+      createdAt: transaction.created_at,
+    })),
   };
 }

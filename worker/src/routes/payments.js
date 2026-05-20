@@ -79,34 +79,69 @@ async function handleCreatePayment(request, env) {
     return jsonResponse({ error: 'Amount must be between 100 and 10000000 paise', code: 'VALIDATION_ERROR' }, 400);
   }
 
+  if (!merchant.upi_id || !merchant.business_name) {
+    return jsonResponse({
+      error: 'Merchant profile is missing business name or UPI ID',
+      code: 'MERCHANT_PROFILE_INCOMPLETE',
+    }, 400);
+  }
+
   const transactionId = generateTransactionId();
   const timestamp = Date.now();
-  const transactionHash = await generateTransactionHash(
-    merchant.id, amount, orderId, transactionId, timestamp, env.TRANSACTION_SECRET
-  );
+  const transactionSecret = env.TRANSACTION_SECRET || env.JWT_SECRET || 'transaction-secret-not-configured';
+  let transaction;
+  let upiIntentUrl;
+  let qrCodeDataUrl;
 
-  const upiUrls = generateUPIIntentURLs(
-    merchant.upi_id, merchant.business_name, amount, orderId, transactionId
-  );
-  const upiIntentUrl = upiUrls.generic;
+  try {
+    if (!env.TRANSACTION_SECRET) {
+      console.error('TRANSACTION_SECRET is not configured for the Worker');
+    }
 
-  // Use external QR code API instead of Node.js qrcode library
-  const qrCodeDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiIntentUrl)}`;
+    const transactionHash = await generateTransactionHash(
+      merchant.id, amount, orderId, transactionId, timestamp, transactionSecret
+    );
 
-  const transaction = await createTransaction(env.DB, {
-    transactionId,
-    merchantId: merchant.id,
-    amount,
-    currency: 'INR',
-    orderId,
-    description: description || null,
-    upiIntentUrl,
-    qrCodeDataUrl,
-    status: 'PENDING',
-    transactionHash,
-  });
+    const upiUrls = generateUPIIntentURLs(
+      merchant.upi_id, merchant.business_name, amount, orderId, transactionId
+    );
+    upiIntentUrl = upiUrls.generic;
 
-  await incrementMerchantTransactions(env.DB, merchant.id);
+    // Use external QR code API instead of Node.js qrcode library
+    qrCodeDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiIntentUrl)}`;
+
+    transaction = await createTransaction(env.DB, {
+      transactionId,
+      merchantId: merchant.id,
+      amount,
+      currency: 'INR',
+      orderId,
+      description: description || null,
+      upiIntentUrl,
+      qrCodeDataUrl,
+      status: 'PENDING',
+      transactionHash,
+    });
+
+    try {
+      await incrementMerchantTransactions(env.DB, merchant.id);
+    } catch (err) {
+      console.error('Failed to increment merchant transaction counter:', err);
+    }
+  } catch (err) {
+    console.error('Create payment failed:', err);
+
+    const message = err instanceof Error ? err.message : String(err);
+    const isSchemaError =
+      /no such table|no such column|SQLITE_ERROR|D1_ERROR/i.test(message);
+
+    return jsonResponse({
+      error: isSchemaError
+        ? 'Payment database is not initialized. Run npm run db:init from the worker folder, then redeploy if needed.'
+        : 'Unable to create payment',
+      code: isSchemaError ? 'DATABASE_SETUP_ERROR' : 'PAYMENT_CREATE_FAILED',
+    }, 500);
+  }
 
   const baseUrl = env.FRONTEND_URL || '';
   const paymentUrl = `${baseUrl}/pay/${transactionId}`;

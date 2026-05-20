@@ -38,6 +38,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface AppLayoutProps {
@@ -48,6 +55,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { merchant, isLoading, logout } = useAuth();
   const [location] = useLocation();
   const [isDarkMode, setIsDarkMode] = useState(() => document.documentElement.classList.contains("dark"));
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     const theme = isDarkMode ? "dark" : "light";
@@ -85,12 +93,12 @@ export function AppLayout({ children }: AppLayoutProps) {
         <Sidebar className="border-r-0 bg-sidebar text-sidebar-foreground w-[240px]">
           <SidebarHeader className="p-6">
             <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
+              <Link href="/dashboard" className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
                   <BsQrCode className="h-6 w-6 text-white" />
                 </div>
                 <span className="text-2xl font-black tracking-tight text-white">Free Pi</span>
-              </div>
+              </Link>
               <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
@@ -200,10 +208,14 @@ export function AppLayout({ children }: AppLayoutProps) {
           <header className="h-16 border-b border-border bg-background flex items-center justify-between px-4 sm:px-8 shrink-0">
             <div className="flex items-center gap-2 sm:gap-4">
               <SidebarTrigger className="md:hidden" />
-              <div className="hidden sm:flex items-center gap-4 bg-black text-white px-4 py-2 rounded-full text-xs font-medium cursor-pointer hover:bg-black/90 transition-colors">
+              <button
+                type="button"
+                onClick={() => setSupportOpen(true)}
+                className="hidden sm:flex items-center gap-4 bg-black text-white px-4 py-2 rounded-full text-xs font-medium cursor-pointer hover:bg-black/90 transition-colors"
+              >
                 <Bell className="h-3.5 w-3.5" />
                 <span>Support Center</span>
-              </div>
+              </button>
             </div>
 
             <div className="flex-1 max-w-md mx-2 sm:mx-8 flex items-center justify-center sm:justify-start overflow-hidden">
@@ -241,6 +253,19 @@ export function AppLayout({ children }: AppLayoutProps) {
           </div>
         </main>
       </div>
+      <Dialog open={supportOpen} onOpenChange={setSupportOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Support Center</DialogTitle>
+            <DialogDescription>
+              Mail your query to rohith2005hyd@gmail.com
+            </DialogDescription>
+          </DialogHeader>
+          <Button asChild className="w-full">
+            <a href="mailto:rohith2005hyd@gmail.com">Email Support</a>
+          </Button>
+        </DialogContent>
+      </Dialog>
     </SidebarProvider>
   );
 }

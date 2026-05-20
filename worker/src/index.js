@@ -10,15 +10,46 @@ import { handlePublic } from './routes/public.js';
 import { handleStatusChecker } from './routes/statusChecker.js';
 import { jsonResponse } from './lib/utils.js';
 
+// Simple in-memory rate limiter (per isolate)
+// Resets every 60 seconds
+const rateLimitMap = new Map();
+let lastReset = Date.now();
+
+function checkRateLimit(ip) {
+  const now = Date.now();
+  if (now - lastReset > 60000) {
+    rateLimitMap.clear();
+    lastReset = now;
+  }
+  const count = (rateLimitMap.get(ip) || 0) + 1;
+  rateLimitMap.set(ip, count);
+  return count <= 100; // Max 100 requests per minute per IP per isolate
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
     const method = request.method.toUpperCase();
 
-    // Handle CORS preflight
+    // 1. HTTPS only (force redirect) - skip for localhost
+    if (url.protocol === 'http:' && !url.hostname.includes('localhost') && !url.hostname.includes('127.0.0.1')) {
+      url.protocol = 'https:';
+      return Response.redirect(url.toString(), 301);
+    }
+
+    // 2. Rate Limiting
+    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return applySecurityHeaders(
+        jsonResponse({ error: 'Too many requests' }, 429),
+        env
+      );
+    }
+
+    // 3. Handle CORS preflight
     if (method === 'OPTIONS') {
-      return corsResponse(new Response(null, { status: 204 }));
+      return applySecurityHeaders(new Response(null, { status: 204 }), env);
     }
 
     try {
@@ -61,22 +92,32 @@ export default {
         response = jsonResponse({ error: 'Not found' }, 404);
       }
 
-      return corsResponse(response);
+      return applySecurityHeaders(response, env);
     } catch (err) {
       console.error('Unhandled error:', err);
-      return corsResponse(
-        jsonResponse({ error: 'Internal server error' }, 500)
+      return applySecurityHeaders(
+        jsonResponse({ error: 'Internal server error' }, 500),
+        env
       );
     }
   },
 };
 
-function corsResponse(response) {
+function applySecurityHeaders(response, env) {
   const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', '*');
+  
+  // CORS Setup
+  const origin = (env && env.FRONTEND_URL) ? env.FRONTEND_URL : '*';
+  headers.set('Access-Control-Allow-Origin', origin);
   headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
   headers.set('Access-Control-Max-Age', '86400');
+
+  // CSP & Security headers
+  headers.set('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none';");
+  headers.set('X-Content-Type-Options', 'nosniff');
+  headers.set('X-Frame-Options', 'DENY');
+  headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
 
   return new Response(response.body, {
     status: response.status,

@@ -31,6 +31,18 @@ export default function Landing() {
     }
   };
 
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    const token = window.localStorage.getItem("upi_token");
+
+    if (token) {
+      window.location.href = "/dashboard";
+      return;
+    }
+
+    window.location.reload();
+  };
+
   return (
     <div className="landing-page" style={{ 
       backgroundColor: "#0A1612", 
@@ -572,7 +584,7 @@ export default function Landing() {
       {/* Navbar */}
       <nav className="navbar" id="navbar">
           <div className="container nav-content">
-              <Link href="/" className="logo">
+              <Link href="/" className="logo" onClick={handleLogoClick}>
                   <svg stroke="#D4AF37" fill="#D4AF37" strokeWidth="0" viewBox="0 0 16 16" height="28" width="28" xmlns="http://www.w3.org/2000/svg">
                       <path d="M0 0h7v7H0V0zm1 1v5h5V1H1z"></path>
                       <path d="M2 2h3v3H2V2z"></path>
@@ -595,7 +607,7 @@ export default function Landing() {
       <section className="hero">
           <div className="container">
               <h1>Accept UPI Payments Without a Payment Gateway</h1>
-              <p>Free, open, developer-friendly UPI orchestration for Indian merchants. No transaction fees. No monthly charges. No hidden costs.</p>
+              <p>Free, open, developer-friendly UPI orchestration for Indian merchants. No transaction fees. No monthly charges. No hidden costs. Fast-tracked payment verification & collection system for payments below ₹2,000.</p>
               <div className="hero-btns">
                   <Link href="/register" className="btn btn-primary">Start for Free &rarr;</Link>
                   <Link href="/dashboard" className="btn btn-outline">View Dashboard &rarr;</Link>
