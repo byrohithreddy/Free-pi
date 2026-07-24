@@ -167,7 +167,7 @@ export default function ApiKeys() {
           </CardHeader>
           <CardContent className="space-y-4">
             <pre className="p-4 rounded-lg bg-muted text-muted-foreground font-mono text-sm overflow-x-auto border border-border/50">
-{`curl -X POST https://api.yourdomain.com/api/payments \\
+{`curl -X POST https://api.free-pi.pages.dev/api/payments \\
   -H "Content-Type: application/json" \\
   -H "X-API-Key: sk_live_your_secret_key" \\
   -d '{
@@ -179,8 +179,8 @@ export default function ApiKeys() {
             <pre className="p-4 rounded-lg bg-muted text-muted-foreground font-mono text-sm overflow-x-auto border border-border/50">
 {`{
   "transactionId": "TXN_20260512_5EAB5DE9",
-  "paymentUrl": "https://yourdomain.com/pay/TXN_20260512_5EAB5DE9",
-  "redirectUrl": "https://yourdomain.com/pay/TXN_20260512_5EAB5DE9",
+  "paymentUrl": "https://free-pi.pages.dev/pay/TXN_20260512_5EAB5DE9",
+  "redirectUrl": "https://free-pi.pages.dev/pay/TXN_20260512_5EAB5DE9",
   "amount": 50000,
   "orderId": "ORD-123",
   "description": "Premium Plan",

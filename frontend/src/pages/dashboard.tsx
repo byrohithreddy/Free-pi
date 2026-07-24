@@ -169,8 +169,10 @@ export default function Dashboard() {
               <div className="relative z-10">
                 <h3 className="text-3xl font-black">{statsLoading ? "..." : formatRupees(stats?.totalCollected || 0)}</h3>
                 <div className="flex items-center gap-2 mt-1">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">+12% vs last month</p>
+                  <div className={`h-1.5 w-1.5 rounded-full ${stats?.collectionGrowth >= 0 ? 'bg-primary' : 'bg-red-500'}`} />
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">
+                    {stats?.collectionGrowth > 0 ? '+' : ''}{stats?.collectionGrowth ? stats.collectionGrowth.toFixed(1) : '0'}% vs last month
+                  </p>
                 </div>
               </div>
               <div className="absolute -right-8 -bottom-8 h-40 w-40 bg-primary/10 blur-3xl rounded-full" />

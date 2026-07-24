@@ -222,12 +222,29 @@ export async function findTransactionByOrderId(db, orderId) {
 // ---------------------------------------------------------------------------
 
 export async function getMerchantStats(db, merchantId) {
-  const startOfToday = new Date();
+  const now = new Date();
+  
+  const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const todayStr = startOfToday.toISOString();
 
-  const [pendingResult, confirmedTodayResult, rejectedResult, allConfirmedResult, totalCountResult, recentTxns] =
-    await Promise.all([
+  // For monthly growth
+  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const thisMonthStr = startOfThisMonth.toISOString();
+
+  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthStr = startOfLastMonth.toISOString();
+
+  const [
+    pendingResult, 
+    confirmedTodayResult, 
+    rejectedResult, 
+    allConfirmedResult, 
+    totalCountResult, 
+    thisMonthResult,
+    lastMonthResult,
+    recentTxns
+  ] = await Promise.all([
       db.prepare("SELECT COUNT(*) as value FROM transactions WHERE merchant_id = ? AND status = 'PENDING'")
         .bind(merchantId).first(),
       db.prepare("SELECT COUNT(*) as value FROM transactions WHERE merchant_id = ? AND status = 'CONFIRMED' AND confirmed_at >= ?")
@@ -238,9 +255,23 @@ export async function getMerchantStats(db, merchantId) {
         .bind(merchantId).first(),
       db.prepare('SELECT COUNT(*) as value FROM transactions WHERE merchant_id = ?')
         .bind(merchantId).first(),
+      db.prepare("SELECT COALESCE(SUM(amount), 0) as value FROM transactions WHERE merchant_id = ? AND status = 'CONFIRMED' AND confirmed_at >= ?")
+        .bind(merchantId, thisMonthStr).first(),
+      db.prepare("SELECT COALESCE(SUM(amount), 0) as value FROM transactions WHERE merchant_id = ? AND status = 'CONFIRMED' AND confirmed_at >= ? AND confirmed_at < ?")
+        .bind(merchantId, lastMonthStr, thisMonthStr).first(),
       db.prepare('SELECT * FROM transactions WHERE merchant_id = ? ORDER BY created_at DESC LIMIT 5')
         .bind(merchantId).all(),
     ]);
+
+  const thisMonthCollected = thisMonthResult?.value || 0;
+  const lastMonthCollected = lastMonthResult?.value || 0;
+  
+  let collectionGrowth = 0;
+  if (lastMonthCollected > 0) {
+    collectionGrowth = ((thisMonthCollected - lastMonthCollected) / lastMonthCollected) * 100;
+  } else if (thisMonthCollected > 0) {
+    collectionGrowth = 100;
+  }
 
   return {
     pendingCount: pendingResult?.value || 0,
@@ -248,6 +279,9 @@ export async function getMerchantStats(db, merchantId) {
     rejectedCount: rejectedResult?.value || 0,
     totalCollected: allConfirmedResult?.value || 0,
     totalTransactions: totalCountResult?.value || 0,
+    collectionGrowth,
+    thisMonthCollected,
+    lastMonthCollected,
     recentTransactions: recentTxns?.results || [],
   };
 }

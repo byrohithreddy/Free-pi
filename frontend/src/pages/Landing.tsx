@@ -607,7 +607,7 @@ export default function Landing() {
       <section className="hero">
           <div className="container">
               <h1>Accept UPI Payments Without a Payment Gateway</h1>
-              <p>Free, open, developer-friendly UPI orchestration for Indian merchants. No transaction fees. No monthly charges. No hidden costs. Fast-tracked payment verification & collection system for payments below ₹2,000.</p>
+              <p>Free, open, developer-friendly UPI based Peer to Peer irreversible payment verification & collection system for merchants.<br /><b>No transaction fees. No monthly charges. No hidden costs.</b><br/> Fast-tracked Manual payment verification & Automated collection system for payments below ₹2,000.</p>
               <div className="hero-btns">
                   <Link href="/register" className="btn btn-primary">Start for Free &rarr;</Link>
                   <Link href="/dashboard" className="btn btn-outline">View Dashboard &rarr;</Link>
