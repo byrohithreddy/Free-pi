@@ -1,4 +1,4 @@
-# UPI Orchestrator — Cloudflare Deployment
+# Free Pi — Cloudflare Deployment
 
 Complete migration of the UPI Payment Orchestrator from Node.js/Express/PostgreSQL to Cloudflare's infrastructure.
 
