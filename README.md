@@ -1,400 +1,444 @@
-# Free Pi
+# Free Pi — UPI Payment Collection & Merchant Operations
 
-**A developer-first payment collection and verification platform built around UPI.**
+<div align="center">
 
-Free Pi gives merchants a hosted payment flow and a dashboard for creating payment requests, sharing UPI payment instructions, collecting customer details and UTR references, and reviewing transaction status. Developers can integrate payment creation into their own applications using an API key.
+![Free Pi Banner](https://img.shields.io/badge/FREE%20PI-UPI%20Payment%20Operations-09090b?style=for-the-badge&logo=upi)
 
-> **Project status:** Free Pi is an independent project under active development. Payment confirmation currently relies on merchant review and customer-submitted UTR details; it is **not bank-side payment verification**. Review the security and deployment notes before using it with real transactions.
+**Developer-First UPI Payment Requests, Hosted Checkout & Merchant Verification Workflow**
 
-[Repository](https://github.com/byrohithreddy/Free-pi) · [Report a bug](https://github.com/byrohithreddy/Free-pi/issues)
+[![Platform](https://img.shields.io/badge/Platform-Cloudflare%20Workers-f38020?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com/)
+[![Frontend](https://img.shields.io/badge/Frontend-React%20%2B%20TypeScript-3178c6?style=flat-square&logo=react)](https://react.dev/)
+[![Build](https://img.shields.io/badge/Build-Vite-646cff?style=flat-square&logo=vite)](https://vite.dev/)
+[![Database](https://img.shields.io/badge/Database-Cloudflare%20D1-faad3f?style=flat-square&logo=cloudflare)](https://developers.cloudflare.com/d1/)
+[![License](https://img.shields.io/badge/License-Proprietary%20%2F%20All%20Rights%20Reserved-crimson?style=flat-square)](#-license--intellectual-property)
+
+[Live Application](https://free-pi.pages.dev) • [API Endpoint](https://api.free-pi.pages.dev) • [Overview](#-overview) • [Architecture](#-system-architecture) • [Features](#-key-capabilities) • [API Surface](#-api-surface) • [Security](#-security--operational-boundaries) • [License](#-license--intellectual-property)
+
+</div>
 
 ---
 
-## Contents
+## 📌 Overview
 
-- [Product overview](#product-overview)
-- [Capabilities](#capabilities)
-- [How the payment flow works](#how-the-payment-flow-works)
-- [Architecture](#architecture)
-- [Technology stack](#technology-stack)
-- [Repository layout](#repository-layout)
-- [Getting started](#getting-started)
-- [Configuration and secrets](#configuration-and-secrets)
-- [Database setup](#database-setup)
-- [Run locally](#run-locally)
-- [Deploy to Cloudflare](#deploy-to-cloudflare)
-- [API reference](#api-reference)
-- [Integrating payment creation](#integrating-payment-creation)
-- [Security and operational considerations](#security-and-operational-considerations)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
+**Free Pi** is a developer-oriented UPI payment-request and merchant operations platform. It combines a merchant dashboard, a hosted customer payment page, and a JSON API so applications can create payment requests without implementing the entire customer-facing workflow themselves.
 
-## Product overview
+Free Pi generates UPI intent instructions and QR-code URLs, captures customer details and customer-submitted UTR references, and gives merchants a place to review, confirm, or reject requests. The dashboard also provides transaction search, status filtering, analytics, profile management, and API credential controls.
 
-Free Pi is designed for merchants and developers who need a lightweight way to create UPI payment requests without building the entire customer-facing payment experience themselves.
+The application is built around a serverless architecture using **React, TypeScript, Vite, Cloudflare Workers, and Cloudflare D1**.
 
-It combines a merchant dashboard, a hosted customer payment page, and an HTTP API. A payment request generates a UPI intent URL and QR-code URL, and customers can submit a UTR (Unique Transaction Reference) after attempting payment. Merchants review the submitted information and confirm or reject the request from the dashboard.
+> **Important payment boundary:** Free Pi is a payment-request and tracking tool, not a bank or payment processor. The current workflow does not independently verify bank settlement or query a UPI provider. A customer-submitted UTR is not proof that funds have reached the merchant. Merchants must independently verify the transfer before fulfilling an order.
 
-Free Pi does not itself move money, act as a bank, or provide a payment-gateway settlement rail. UPI transfers take place in the customer's UPI app.
+---
 
-## Capabilities
+## 🏛️ System Architecture
 
-### Merchant workspace
-- Merchant registration and login.
-- Dashboard metrics and recent transaction activity.
-- Transaction search, status filtering, pagination, and detail views.
+Free Pi uses a browser-based merchant interface connected to a Cloudflare Worker API, with Cloudflare D1 providing relational persistence.
+
+\`\`\`text
+                    ┌─────────────────────────────────────┐
+                    │         Free Pi Web Client          │
+                    │      React + TypeScript + Vite      │
+                    └──────────────────┬──────────────────┘
+                                       │ HTTPS / JSON
+                                       ▼
+                    ┌─────────────────────────────────────┐
+                    │       Cloudflare Worker API         │
+                    │ Routing · Authentication · Logic   │
+                    └──────────────────┬──────────────────┘
+                                       │ D1 binding
+                                       ▼
+                    ┌─────────────────────────────────────┐
+                    │          Cloudflare D1              │
+                    │   Merchants · Transactions · Indexes│
+                    └─────────────────────────────────────┘
+
+       Hosted customer payment page
+                    │
+                    ├── UPI intent URL ──► Customer's UPI application
+                    │
+                    └── QR-code URL ─────► External QR rendering service
+\`\`\`
+
+### 1. Frontend Application
+The frontend is a single-page React application built with TypeScript and Vite. Wouter provides client-side routing, TanStack Query manages server-state requests, and reusable UI components support the dashboard and transaction workflows.
+
+### 2. Serverless API Layer
+The Worker entry point routes requests to dedicated modules for authentication, payment operations, merchant management, public payment pages, and order-status lookup. Shared utilities handle responses, cryptographic operations, and D1 queries.
+
+### 3. Persistence Layer
+Cloudflare D1 stores merchant profiles and payment transactions. The schema defines merchant and transaction records with indexes for merchant/status/date filtering, transaction IDs, order IDs, and UTR references.
+
+### 4. External Payment Experience
+Free Pi creates UPI intent URLs and uses an external QR-code service to render payment QR codes. The actual money transfer happens in the customer's UPI application; Free Pi does not hold or settle funds.
+
+---
+
+## 🔐 Security & Authentication Architecture
+
+Free Pi implements authentication and credential-handling mechanisms appropriate to its current application design. These controls should not be interpreted as a completed independent security audit or a guarantee of production readiness.
+
+- **JWT sessions:** The API issues HMAC-SHA-256 signed JWTs for authenticated merchant sessions. Tokens have a seven-day expiry in the current implementation.
+- **Password hashing:** Passwords are hashed with PBKDF2-SHA-256 using a generated salt and 100,000 iterations.
+- **API credentials:** Public and secret API keys are generated for merchants. API-key authentication supports payment creation.
+- **Secret-key storage:** API secret keys are stored as hashes rather than retained as plaintext in the merchant record.
+- **Credential rotation:** Merchants can regenerate API credentials. Integrations using a replaced secret key must be updated.
+- **Parameterized SQL:** D1 queries use bound parameters for data values rather than directly concatenating user-provided values into SQL.
+- **Transport and response headers:** The Worker redirects non-local HTTP requests to HTTPS and applies configured CORS and several browser security headers.
+
+### Authentication Model
+
+| Operation | Authentication |
+|---|---|
+| Merchant registration and login | Public endpoint |
+| Current merchant profile | JWT |
+| Dashboard payment listing and details | JWT |
+| Confirm or reject a payment | JWT |
+| Merchant statistics and profile updates | JWT |
+| API credential regeneration | JWT |
+| Create a payment request | JWT or API key |
+| Hosted payment page data | Public transaction endpoint |
+| Customer details and UTR submission | Public transaction endpoint |
+| Order-status lookup | Public endpoint |
+
+### Operational Security Notes
+
+- Configure strong, unique Worker secrets for every environment.
+- Keep secret API keys on trusted servers; never embed them in browser code or public repositories.
+- Restrict CORS to the intended frontend origin.
+- Review the in-memory per-isolate rate limiter before relying on it for abuse prevention; it is not a globally coordinated rate-limiting system.
+- Validate merchant ownership and authorization paths as part of security testing.
+- Do not treat customer-supplied UTR data or application status as independent evidence of payment settlement.
+
+---
+
+## 🔁 Payment Request & Verification Workflow
+
+\`\`\`text
+  [ Merchant Dashboard / Integrating Server ]
+                      │
+                      ▼
+            [ Create Payment Request ]
+                      │
+                      ▼
+       [ Transaction + UPI Intent + QR URL ]
+                      │
+                      ▼
+           [ Hosted Customer Payment Page ]
+                      │
+          ┌───────────┴────────────┐
+          ▼                        ▼
+ [ Customer Details ]      [ UPI App / QR Payment ]
+                                   │
+                                   ▼
+                         [ Customer Submits UTR ]
+                                   │
+                                   ▼
+                       [ Merchant Reviews Records ]
+                                   │
+                         ┌─────────┴─────────┐
+                         ▼                   ▼
+                    [ CONFIRMED ]        [ REJECTED ]
+\`\`\`
+
+1. **Request creation:** The merchant creates a payment request from the dashboard or through the API.
+2. **Payment instructions:** Free Pi returns a transaction identifier, hosted payment URL, UPI intent URL, and QR-code URL.
+3. **Customer interaction:** The customer opens the hosted page, views the payment instructions, and can submit customer details.
+4. **UTR submission:** The customer can submit a UTR reference associated with the attempted transfer.
+5. **Merchant review:** The merchant reviews the transaction and evidence available through their own bank or UPI app.
+6. **Status update:** The merchant confirms or rejects the pending transaction in Free Pi. A matching UTR can also be used by the application workflow to locate a pending transaction.
+7. **Status lookup:** Integrating applications can query the status of an order.
+
+**Verification limitation:** UTR matching is a workflow convenience, not bank verification. The application does not currently confirm transactions through a bank API, UPI provider webhook, or settlement reconciliation service.
+
+---
+
+## ✨ Key Capabilities
+
+### 1. Merchant Operations Dashboard
+- Dashboard statistics and recent transaction activity.
+- Transaction detail views.
+- Status-aware transaction monitoring.
 - Merchant profile settings.
-- API credential viewing and regeneration.
-- Analytics views for transaction and collection trends.
+- Payment request creation from the dashboard.
 
-### Payment collection
-- Create payment requests with an amount and order ID.
-- Generate UPI intent links and a QR-code URL for the request.
-- Hosted customer payment page with customer-detail collection.
-- Capture customer-submitted UTR references.
-- Confirm or reject pending requests from the merchant workflow.
-- Confirm a pending request by matching a submitted UTR.
-- Query an order's payment status.
+### 2. Transaction Management
+- Paginated transaction listings.
+- Search across transaction, order, customer, email, and UTR fields.
+- Filtering by pending, confirmed, and rejected status.
+- Confirmation and rejection actions for pending transactions.
+- Transaction details and timestamps.
 
-### Developer integration
-- REST-style JSON API.
-- JWT authentication for dashboard operations.
-- Secret API-key authentication for payment creation.
-- Paginated and filterable transaction listing.
-- Public endpoints for customer payment pages and status lookup.
+### 3. Hosted UPI Payment Experience
+- Hosted payment page per transaction.
+- UPI intent URL generation.
+- QR-code URL generation.
+- Customer detail collection.
+- UTR reference submission.
+- Public order-status lookup.
 
-## How the payment flow works
+### 4. Developer API
+- JSON-based HTTP API.
+- JWT-authenticated merchant operations.
+- API-key authentication for payment creation.
+- Transaction creation and retrieval.
+- Status update operations.
+- Merchant statistics and profile endpoints.
 
-1. **Create a request.** A merchant creates a payment request in the dashboard or through the API.
-2. **Share payment instructions.** Free Pi returns a transaction ID, a hosted payment URL, a UPI intent URL, and a QR-code URL.
-3. **Customer pays externally.** The customer opens a supported UPI app and completes or attempts the transfer there.
-4. **Customer submits a UTR.** The hosted page can collect customer details and the UTR reference.
-5. **Merchant verifies the payment.** The merchant checks the payment in their own UPI/bank records and confirms or rejects the request in Free Pi.
-6. **Check the result.** The merchant can inspect the transaction in the dashboard or query the order-status endpoint.
+### 5. Analytics & Reporting Views
+- Merchant-level transaction statistics.
+- Confirmed collection and transaction status metrics.
+- Collection growth calculations.
+- Analytics views and charts for transaction activity.
 
-**Important:** A submitted UTR is information supplied by the customer, not proof that funds have settled. The current implementation does not independently query a bank or UPI provider to verify the transfer. Do not automatically deliver goods or services solely because a customer submitted a UTR or because a request exists.
+---
 
-## Architecture
+## ⚙️ Transaction Rules & Business Logic
 
-    ┌──────────────────────────────┐
-    │ Browser / Merchant Dashboard │
-    │ React + TypeScript + Vite    │
-    └──────────────┬───────────────┘
-                   │ HTTPS / JSON API
-                   ▼
-    ┌──────────────────────────────┐
-    │ Cloudflare Worker            │
-    │ Routing · Auth · API logic   │
-    └──────────────┬───────────────┘
-                   │ D1 binding
-                   ▼
-    ┌──────────────────────────────┐
-    │ Cloudflare D1                │
-    │ SQLite-compatible database   │
-    └──────────────────────────────┘
-
-    Customer payment page → UPI intent / QR URL → Customer's UPI app
-
-The repository contains a Vite single-page frontend and a Cloudflare Worker API. The Worker uses Cloudflare D1 for persistence and Web Crypto APIs for token signing, password hashing, API-key hashing, and transaction integrity hashes. QR-code images are currently served through an external QR-code service.
-
-## Technology stack
-
-| Layer | Technologies |
+| Area | Current Application Behavior |
 |---|---|
-| Frontend | React, TypeScript, Vite |
-| Routing and data fetching | Wouter, TanStack Query |
-| UI | Tailwind CSS, Radix UI primitives, Recharts, Lucide |
-| API | Cloudflare Workers, JavaScript modules |
-| Database | Cloudflare D1 (SQLite) |
-| Authentication | HMAC-SHA-256 JWT, PBKDF2-SHA-256 password hashing, API keys |
-| Deployment | Cloudflare Pages and Cloudflare Workers |
-| QR rendering | External QR Server API |
+| Transaction identity | Each transaction receives a generated transaction ID and is associated with a merchant. |
+| Amount representation | API amounts are represented in paise; ₹50.00 is 5,000 paise. |
+| Initial state | New payment requests start with the PENDING status. |
+| Confirmation | A pending transaction can be confirmed through the authenticated merchant workflow. |
+| Rejection | A pending transaction can be rejected through the authenticated merchant workflow. |
+| Processed transactions | Confirm/reject operations reject transactions that are no longer pending. |
+| UTR matching | The application can locate a pending transaction for a merchant using a submitted UTR. |
+| Merchant isolation | Merchant-scoped queries are used for transaction listing and merchant transaction operations. |
+| Public customer flow | Public payment endpoints expose transaction-specific payment-page operations without a merchant dashboard session. |
+| Status lookup | A public endpoint can check transaction status using an order ID. |
+| Integrity metadata | The transaction model includes a transaction hash generated from transaction-related fields and a configured secret. |
+| QR generation | QR images are delivered through an external QR-code service. |
 
-## Repository layout
+These rules describe application behavior, not a guarantee of settlement, fraud detection, or payment-provider certification.
 
-    Free-pi/
-    ├── frontend/
-    │   ├── public/                 # Static assets and Pages routing files
-    │   ├── src/
-    │   │   ├── api-client-react/   # API client and generated request hooks
-    │   │   ├── components/         # Layout, dialogs, and UI components
-    │   │   ├── hooks/              # Shared React hooks
-    │   │   ├── lib/                # Authentication and utilities
-    │   │   ├── pages/              # Landing, dashboard, payments, settings, etc.
-    │   │   ├── App.tsx             # Application routes and providers
-    │   │   └── main.tsx            # Frontend entry point
-    │   ├── package.json
-    │   └── vite.config.ts
-    ├── worker/
-    │   ├── src/
-    │   │   ├── routes/             # Auth, merchant, payment, public, status APIs
-    │   │   ├── middleware/         # Request authentication
-    │   │   ├── lib/                # Auth/crypto, D1 queries, response helpers
-    │   │   └── index.js            # Worker entry point and routing
-    │   ├── schema.sql              # D1 schema and indexes
-    │   ├── wrangler.toml           # Worker and D1 configuration
-    │   └── package.json
-    └── README.md
+---
 
-## Getting started
+## 🗄️ Database Schema & Data Model
 
-### Prerequisites
+Free Pi uses Cloudflare D1, a SQLite-compatible relational database. The current schema centers on merchant identity and transaction lifecycle records.
 
-- Node.js 18 or later (use a currently supported LTS release where possible).
-- npm or pnpm.
-- A Cloudflare account for remote D1 and deployment.
-- Wrangler CLI for Worker and D1 commands.
+### Core Tables
 
-Clone the repository:
+#### merchants
 
-    git clone https://github.com/byrohithreddy/Free-pi.git
-    cd Free-pi
+Stores merchant account and integration data.
 
-## Configuration and secrets
-
-### Frontend
-
-The frontend reads VITE_API_URL to configure the API base URL. Set it to your Worker URL for local or deployed environments.
-
-Create frontend/.env.local:
-
-    VITE_API_URL=http://127.0.0.1:8787
-
-For a deployed frontend, use your HTTPS Worker URL instead. Values prefixed with VITE_ are bundled into browser code; **never put secrets in frontend environment variables**.
-
-### Worker secrets
-
-Set these using Wrangler secrets. Generate unique random values for each environment; do not reuse example values from documentation or commit secrets to Git.
-
-| Secret | Purpose |
+| Field | Purpose |
 |---|---|
-| JWT_SECRET | Signs and verifies JWTs |
-| TRANSACTION_SECRET | Signs transaction integrity data |
-| API_KEY_SECRET | Intended for API-key-related cryptographic operations |
+| id | Primary key |
+| email | Unique merchant login identifier |
+| password_hash | Password hash |
+| business_name | Merchant or business display name |
+| upi_id | Merchant UPI ID / VPA |
+| phone | Optional contact number |
+| api_key_public | Unique public API key |
+| api_key_secret_hash | Hashed secret API key |
+| total_transactions | Stored transaction counter |
+| total_collected | Stored collection counter |
+| created_at, updated_at | Record timestamps |
 
-Generate a high-entropy secret locally, for example:
+#### transactions
 
-    openssl rand -hex 32
+Stores payment request and lifecycle information.
 
-Then, from the worker/ directory, set each secret:
-
-    npx wrangler secret put JWT_SECRET
-    npx wrangler secret put TRANSACTION_SECRET
-    npx wrangler secret put API_KEY_SECRET
-
-Wrangler prompts you to enter each value. Keep the values in a password manager or secure deployment secret store.
-
-The Worker also uses the following non-secret variables in worker/wrangler.toml:
-
-| Variable | Purpose |
+| Field | Purpose |
 |---|---|
-| FRONTEND_URL | Expected frontend origin for CORS and hosted payment links |
-| NODE_ENV | Runtime environment label |
+| id | Primary key |
+| transaction_id | Unique application transaction identifier |
+| merchant_id | Merchant relationship |
+| amount, currency | Amount in paise and currency (INR by default) |
+| order_id | Integrating merchant's order reference |
+| description | Optional payment description |
+| customer_name, customer_email, customer_phone | Customer details where supplied |
+| upi_intent_url | Generated UPI payment instruction |
+| qr_code_data_url | QR-code URL/data field used by the payment flow |
+| status | Application transaction state |
+| transaction_hash | Transaction integrity metadata |
+| merchant_notes | Optional merchant review notes |
+| utr_number | Submitted UTR reference |
+| created_at, confirmed_at, updated_at | Lifecycle timestamps |
 
-Update FRONTEND_URL to your actual frontend origin before deploying. Do not assume the example domain is yours.
+### Indexing Strategy
 
-## Database setup
+The schema defines indexes to support common transaction operations:
+- Merchant, status, and creation-date queries.
+- Transaction identifier lookup.
+- Order ID lookup.
+- UTR reference lookup.
 
-The Worker expects a D1 database bound as DB. The checked-in worker/wrangler.toml contains a database name and ID for the existing project configuration. For your own deployment, create or select a D1 database and update the binding to match it.
+### Data Integrity Boundaries
 
-From worker/:
+Relational constraints and indexes help structure application data. They do not by themselves prevent all payment fraud, guarantee exactly-once processing, or prove that a transfer settled with a bank. Those guarantees require separate application-level controls and external verification systems.
 
-    npx wrangler login
-    npx wrangler d1 create upi-payments
+---
 
-Copy the database ID returned by Wrangler into worker/wrangler.toml, retaining the binding name DB. Then apply the schema to the database you intend to use.
+## 🧰 Technology Stack Matrix
 
-For a local development database:
+| Layer | Technology | Purpose |
+|---|---|---|
+| Frontend framework | React, TypeScript | Merchant and customer-facing application |
+| Build tooling | Vite | Frontend development and production build |
+| Client routing | Wouter | Single-page application routes |
+| Server state | TanStack Query | API data fetching and cache management |
+| UI system | Tailwind CSS, Radix UI primitives | Layout and interface components |
+| Charts | Recharts | Dashboard and analytics visualizations |
+| Icons | Lucide React | Interface iconography |
+| Edge runtime | Cloudflare Workers | HTTP API and business logic |
+| Database | Cloudflare D1 / SQLite | Merchant and transaction persistence |
+| Authentication | HMAC-SHA-256 JWT | Signed merchant session tokens |
+| Password hashing | Web Crypto PBKDF2-SHA-256 | Password verification |
+| API credential handling | Cryptographically generated keys and hashes | Merchant API authentication |
+| QR rendering | External QR Server API | QR-code image generation |
 
-    npx wrangler d1 execute upi-payments --local --file=./schema.sql
+---
 
-For a remote database:
+## 📡 API Surface
 
-    npx wrangler d1 execute upi-payments --remote --file=./schema.sql
+The API uses JSON request and response bodies unless otherwise specified. Protected routes require a bearer JWT, while payment creation supports a JWT or an API key sent through the X-API-Key header.
 
-Verify the tables:
-
-    npx wrangler d1 execute upi-payments --local --command="SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
-
-Use --remote instead of --local when checking the deployed database. Confirm the selected database and environment before executing schema changes.
-
-## Run locally
-
-### 1. Start the API
-
-    cd worker
-    npm install
-    npx wrangler dev
-
-Wrangler normally serves the local Worker at http://127.0.0.1:8787. Configure local bindings and secrets in your Wrangler development setup. Never copy production secrets into a shared or committed local configuration.
-
-### 2. Start the frontend
-
-In a second terminal:
-
-    cd frontend
-    npm install
-
-Create frontend/.env.local with the local API URL shown above, then run:
-
-    npm run dev
-
-Vite prints the local frontend URL in the terminal.
-
-### 3. Validate the frontend
-
-    cd frontend
-    npm run typecheck
-    npm run build
-
-The frontend package also provides npm run serve to preview a production build locally. These commands validate the frontend only; they do not replace API, security, or end-to-end testing.
-
-## Deploy to Cloudflare
-
-### Deploy the Worker
-
-1. Configure the D1 database binding in worker/wrangler.toml.
-2. Set FRONTEND_URL to the exact deployed frontend origin.
-3. Apply worker/schema.sql to the intended remote D1 database.
-4. Set the Worker secrets listed above.
-5. Deploy:
-
-       cd worker
-       npm install
-       npx wrangler deploy
-
-Record the deployed Worker URL. Do not publish secret values in logs, issues, or repository files.
-
-### Deploy the frontend
-
-1. Set the Cloudflare Pages build root to frontend.
-2. Set the build command to npm run build.
-3. Set the build output directory to dist.
-4. Set VITE_API_URL to the deployed Worker URL as a Pages build environment variable.
-5. Deploy the project, then verify the frontend and API can communicate.
-
-The repository includes Pages routing files in frontend/public/; verify they are present in the generated output and that direct navigation to client-side routes works after deployment.
-
-### Smoke-test the API
-
-Replace the URL with your deployed Worker URL:
-
-    curl https://YOUR-WORKER-URL/api/healthz
-
-Expected response:
-
-    {"status":"ok"}
-
-A successful health check confirms that the endpoint responds; it does not prove that database operations, authentication, payment workflows, or production security are correctly configured.
-
-## API reference
-
-All routes are prefixed as shown. Request and response bodies use JSON unless otherwise noted. Protected endpoints require a valid JWT in the Authorization: Bearer <token> header, except payment creation, which accepts JWT or an API key through X-API-Key.
-
-| Method | Endpoint | Authentication | Purpose |
+| Method | Endpoint | Access | Purpose |
 |---|---|---|---|
 | GET | / | Public | API service information |
 | GET | /api/healthz | Public | Health check |
 | POST | /api/auth/register | Public | Register a merchant |
 | POST | /api/auth/login | Public | Authenticate a merchant |
-| GET | /api/auth/me | JWT | Get the current merchant profile |
-| POST | /api/payments | JWT or API key | Create a payment request |
-| GET | /api/payments | JWT | List transactions with filters and pagination |
+| GET | /api/auth/me | JWT | Get current merchant profile |
+| POST | /api/payments | JWT / API key | Create a payment request |
+| GET | /api/payments | JWT | List transactions |
 | GET | /api/payments/:transactionId | JWT | Get transaction details |
 | POST | /api/payments/:transactionId/confirm | JWT | Confirm a pending transaction |
 | POST | /api/payments/:transactionId/reject | JWT | Reject a pending transaction |
-| POST | /api/payments/confirm-by-utr | JWT | Confirm a pending transaction by UTR match |
-| GET | /api/merchant/stats | JWT | Get merchant dashboard statistics |
+| POST | /api/payments/confirm-by-utr | JWT | Find and confirm a pending transaction by UTR |
+| GET | /api/merchant/stats | JWT | Get merchant statistics |
 | PUT | /api/merchant/profile | JWT | Update merchant profile |
-| POST | /api/merchant/api-keys/regenerate | JWT | Rotate API credentials |
+| POST | /api/merchant/api-keys/regenerate | JWT | Regenerate API credentials |
 | GET | /api/public/payment/:transactionId | Public | Get hosted payment page data |
 | POST | /api/public/payment/:transactionId/customer | Public | Submit customer details |
 | POST | /api/public/payment/:transactionId/utr | Public | Submit a UTR reference |
-| POST | /api/check-status | Public | Check status by order ID |
+| POST | /api/check-status | Public | Look up order status |
 
-### Transaction statuses
+### Transaction Statuses
 
-- PENDING — created and awaiting merchant review.
-- CONFIRMED — marked confirmed by the merchant workflow.
-- REJECTED — rejected by the merchant workflow.
+- PENDING — payment request is awaiting merchant review.
+- CONFIRMED — transaction has been marked confirmed by the application workflow.
+- REJECTED — transaction has been rejected by the application workflow.
 
-These are application-level statuses, not a direct representation of bank settlement states.
+These states describe Free Pi's records; they are not a direct feed from a bank or UPI settlement system.
 
-## Integrating payment creation
+### Example: Create a Payment Request
 
-The following example creates a request using a secret API key. Replace the URL and credentials with your own deployment values.
+Example request using a server-side API key:
 
-    curl -X POST "https://YOUR-WORKER-URL/api/payments" \
-      -H "Content-Type: application/json" \
-      -H "X-API-Key: YOUR_SECRET_API_KEY" \
-      -d '{
-        "amount": 5000,
-        "orderId": "ORDER-1001",
-        "description": "Example order"
-      }'
+\`\`\`bash
+curl -X POST "https://api.free-pi.pages.dev/api/payments" \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: YOUR_SECRET_API_KEY" \
+  -d '{
+    "amount": 5000,
+    "orderId": "ORDER-1001",
+    "description": "Example order"
+  }'
+\`\`\`
 
-The amount field is expressed in **paise** (the smallest INR unit). For example, 5000 represents ₹50.00. The API validates the amount range; inspect the implementation and response schema before integrating it into a live application.
+The amount is expressed in paise. In this example, 5000 represents ₹50.00. Use the returned transaction ID and hosted payment URL to connect the request to your customer journey.
 
-A successful response includes a transaction identifier, payment URL, UPI intent URL, QR-code URL, and initial status. Use the returned hosted payment URL to direct the customer to the payment page.
-
-**Credential handling**
-- Send the secret API key only from trusted server-side code.
-- Never embed secret API keys in a browser bundle, mobile app, public repository, or client-side JavaScript.
-- Rotate a compromised key and update the server-side integration immediately.
-- Treat customer-provided UTRs and client-visible transaction statuses as untrusted until independently verified.
-
-## Security and operational considerations
-
-Free Pi includes several security-oriented mechanisms, but the presence of security code does not establish production readiness. Before processing real payments, review and test at least the following:
-
-- **Rate limiting:** the current Worker includes an in-memory, per-isolate request counter. This is not a globally coordinated or durable rate limiter; configure and test platform-level protections for the expected traffic and abuse model.
-- **CORS:** set FRONTEND_URL to the exact trusted origin and verify preflight and error responses. Avoid permissive wildcard origins in production.
-- **Secrets:** configure strong, unique secrets for each environment and rotate them according to an operational policy.
-- **Payment verification:** confirmation is merchant-driven and UTR-based; there is no bank-side verification integration in the current flow.
-- **QR-code dependency:** QR images are requested from an external service. Consider the privacy, availability, and dependency implications of sending payment data to a third party.
-- **Authentication and authorization:** test token expiry, key rotation, ownership checks, brute-force resistance, and access to every protected route.
-- **Data protection:** customer details, transaction records, UTRs, and credentials require appropriate access controls, retention policies, and handling.
-- **Monitoring and recovery:** configure useful logs, alerting, backups, and a tested database recovery procedure.
-- **Production validation:** run end-to-end tests against isolated test data and perform a security review before relying on the system for business-critical workflows.
-
-Do not describe the project as PCI-compliant, bank-verified, audited, or production-hardened unless those claims have been independently established.
-
-## Troubleshooting
-
-### Frontend requests fail with CORS errors
-- Confirm VITE_API_URL points to the intended Worker.
-- Confirm FRONTEND_URL exactly matches the frontend origin, including scheme and hostname.
-- Redeploy the Worker after changing its configuration.
-- Inspect the browser network panel and Worker logs for the actual failing request.
-
-### API returns authentication errors
-- Log in again if the JWT has expired or the signing secret changed.
-- Confirm protected routes use Authorization: Bearer <token>.
-- For payment creation with an API key, use X-API-Key from server-side code.
-- If keys were regenerated, update any integration using the old secret key.
-
-### D1 reports a missing table or database
-- Confirm the DB binding and database ID in worker/wrangler.toml.
-- Check whether you are using the local or remote database.
-- Apply schema.sql to the same database that the Worker is configured to use.
-
-### A payment remains pending
-A request remains pending until the merchant workflow confirms or rejects it. A customer-submitted UTR does not automatically prove that the transfer reached the merchant's account.
-
-## Contributing
-
-Contributions, bug reports, and focused improvements are welcome.
-
-1. Open an issue describing the problem or proposed change.
-2. Keep changes scoped and explain their impact.
-3. Run the frontend typecheck and production build for frontend changes.
-4. Test API and database changes against an isolated development database.
-5. Never include credentials, customer information, production data, or secret values in commits or issue reports.
-
-Please include reproducible steps and relevant sanitized logs when reporting bugs.
+**Never call this endpoint with a secret API key embedded in browser-side code.** Integrate from a trusted server and keep the key in a secure environment variable or secret manager.
 
 ---
 
-## Project maturity
+## 🔒 Security & Operational Boundaries
 
-Free Pi is an independent software project under active development. Its dashboard and API provide a foundation for UPI payment-request workflows, but operational controls, independent payment verification, and production assurance must be evaluated separately before adoption in a business-critical environment.
+Free Pi contains security-related controls, but a production deployment should be reviewed against its actual threat model and operating requirements.
+
+- **Rate limiting:** the current request limiter is in-memory and per Worker isolate. It is not globally coordinated and should not be treated as the sole abuse-prevention control.
+- **CORS configuration:** the Worker uses FRONTEND_URL when configured and falls back to a wildcard origin when it is not set. Production deployments should configure the exact trusted origin and verify behavior.
+- **Secrets management:** JWT, transaction-integrity, and API-key-related secrets must be configured independently for each environment. Do not commit secret values.
+- **Payment verification:** the current implementation relies on merchant review and UTR matching; it does not independently verify bank-side settlement.
+- **External QR service:** QR-code generation relies on a third-party service. Evaluate the availability and privacy implications of sending UPI URLs to that provider.
+- **Data protection:** merchant account data, customer details, order references, and UTRs should be handled with appropriate access controls and retention practices.
+- **Monitoring and recovery:** establish logging, alerting, backup, and recovery procedures appropriate to the deployment.
+- **Security testing:** test authentication expiry, authorization boundaries, transaction ownership, credential rotation, public endpoint abuse, and error handling before relying on the service for important payment workflows.
+
+Do not describe Free Pi as bank-verified, audited, certified, or production-hardened unless those claims have been independently substantiated.
+
+---
+
+## 📁 Repository Structure
+
+\`\`\`text
+Free-pi/
+├── frontend/
+│   ├── public/
+│   │   ├── _redirects              # SPA routing rules for Cloudflare Pages
+│   │   ├── _routes.json            # Pages routing configuration
+│   │   ├── favicon.svg
+│   │   └── opengraph.png
+│   ├── src/
+│   │   ├── api-client-react/
+│   │   │   ├── generated/          # Typed API schemas and request hooks
+│   │   │   └── custom-fetch.ts     # API request handling
+│   │   ├── components/
+│   │   │   ├── layout/             # Application layout
+│   │   │   ├── modals/             # Payment creation and transaction details
+│   │   │   └── ui/                 # Shared UI primitives
+│   │   ├── hooks/                  # Shared React hooks
+│   │   ├── lib/
+│   │   │   └── auth.tsx            # Merchant authentication context
+│   │   ├── pages/                  # Landing, dashboard, transactions, analytics,
+│   │   │                           # API keys, settings, login, register and pay
+│   │   ├── App.tsx                 # Routes and application providers
+│   │   └── main.tsx                # Frontend entry point
+│   ├── package.json
+│   └── vite.config.ts
+├── worker/
+│   ├── src/
+│   │   ├── lib/
+│   │   │   ├── auth.js             # JWT, password and API-key utilities
+│   │   │   ├── db.js               # D1 query helpers
+│   │   │   └── utils.js            # Shared response helpers
+│   │   ├── middleware/
+│   │   │   └── auth.js             # JWT and API-key authentication
+│   │   ├── routes/
+│   │   │   ├── auth.js             # Registration, login, current merchant
+│   │   │   ├── payments.js         # Payment lifecycle endpoints
+│   │   │   ├── merchant.js         # Merchant profile, stats, API keys
+│   │   │   ├── public.js            # Hosted payment and customer endpoints
+│   │   │   └── statusChecker.js    # Public order-status lookup
+│   │   └── index.js                # Worker entry point and route dispatch
+│   ├── schema.sql                  # D1 tables and indexes
+│   ├── wrangler.toml               # Worker and database configuration
+│   └── package.json
+└── README.md
+\`\`\`
+
+---
+
+## 🔒 License & Intellectual Property
+
+**Copyright © 2026 Mushke Rohith Reddy. All Rights Reserved.**
+
+### PROPRIETARY AND CONFIDENTIAL
+
+Free Pi, including its source code, documentation, architecture, interface designs, database schema, business logic, and associated intellectual property, is proprietary to **Mushke Rohith Reddy**, except for third-party components governed by their respective licenses.
+
+#### Terms & Usage Restrictions
+
+1. **No Unauthorized Use:** You may not copy, modify, distribute, reproduce, sublicense, publish, sell, host, mirror, or commercially exploit this software or any portion of it without explicit prior written permission from the copyright holder.
+2. **No Public Redistribution:** This project is not offered under the MIT, Apache, GPL, or another open-source license. Public repository visibility does not grant permission to reuse, deploy, fork, or redistribute the proprietary application.
+3. **No Unauthorized Deployment:** Operating a production or commercial instance requires explicit written authorization from the copyright holder.
+4. **No Repurposing of Proprietary Logic:** You may not extract or repurpose the project's proprietary application logic, workflows, or designs without authorization.
+5. **Third-Party Components:** Dependencies and third-party services remain subject to their own licenses and terms. This notice does not override those separate rights.
+
+For licensing inquiries, authorized deployments, institutional use, or commercial partnerships, contact:
+
+**Email:** rohith2005hyd@gmail.com
+
+---
+
+<div align="center">
+
+<sub>Designed & Developed by <b>Mushke Rohith Reddy</b></sub>
+
+<sub>Free Pi — UPI Payment Request & Merchant Operations Platform</sub>
+
+</div>
