@@ -437,7 +437,7 @@ For licensing inquiries, authorized deployments, institutional use, or commercia
 
 <div align="center">
 
-<sub>Designed & Developed by <b>Mushke Rohith Reddy</b></sub>
+<sub>Designed & Architected by <b>Mushke Rohith Reddy</b></sub>
 
 <sub>Free Pi — UPI Payment Request & Merchant Operations Platform</sub>
 
