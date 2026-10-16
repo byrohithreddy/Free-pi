@@ -34,7 +34,7 @@ The application is built around a serverless architecture using **React, TypeScr
 
 Free Pi uses a browser-based merchant interface connected to a Cloudflare Worker API, with Cloudflare D1 providing relational persistence.
 
-\`\`\`text
+```text
                     ┌─────────────────────────────────────┐
                     │         Free Pi Web Client          │
                     │      React + TypeScript + Vite      │
@@ -57,7 +57,7 @@ Free Pi uses a browser-based merchant interface connected to a Cloudflare Worker
                     ├── UPI intent URL ──► Customer's UPI application
                     │
                     └── QR-code URL ─────► External QR rendering service
-\`\`\`
+```
 
 ### 1. Frontend Application
 The frontend is a single-page React application built with TypeScript and Vite. Wouter provides client-side routing, TanStack Query manages server-state requests, and reusable UI components support the dashboard and transaction workflows.
@@ -113,7 +113,7 @@ Free Pi implements authentication and credential-handling mechanisms appropriate
 
 ## 🔁 Payment Request & Verification Workflow
 
-\`\`\`text
+```text
   [ Merchant Dashboard / Integrating Server ]
                       │
                       ▼
@@ -138,7 +138,7 @@ Free Pi implements authentication and credential-handling mechanisms appropriate
                          ┌─────────┴─────────┐
                          ▼                   ▼
                     [ CONFIRMED ]        [ REJECTED ]
-\`\`\`
+```
 
 1. **Request creation:** The merchant creates a payment request from the dashboard or through the API.
 2. **Payment instructions:** Free Pi returns a transaction identifier, hosted payment URL, UPI intent URL, and QR-code URL.
@@ -329,7 +329,7 @@ These states describe Free Pi's records; they are not a direct feed from a bank 
 
 Example request using a server-side API key:
 
-\`\`\`bash
+```bash
 curl -X POST "https://api.free-pi.pages.dev/api/payments" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: YOUR_SECRET_API_KEY" \
@@ -338,7 +338,7 @@ curl -X POST "https://api.free-pi.pages.dev/api/payments" \
     "orderId": "ORDER-1001",
     "description": "Example order"
   }'
-\`\`\`
+```
 
 The amount is expressed in paise. In this example, 5000 represents ₹50.00. Use the returned transaction ID and hosted payment URL to connect the request to your customer journey.
 
@@ -365,7 +365,7 @@ Do not describe Free Pi as bank-verified, audited, certified, or production-hard
 
 ## 📁 Repository Structure
 
-\`\`\`text
+```text
 Free-pi/
 ├── frontend/
 │   ├── public/
@@ -409,7 +409,7 @@ Free-pi/
 │   ├── wrangler.toml               # Worker and database configuration
 │   └── package.json
 └── README.md
-\`\`\`
+```
 
 ---
 
