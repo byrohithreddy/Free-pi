@@ -18,15 +18,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Copy, AlertTriangle, CheckCircle2, Lock } from "lucide-react";
+import { Loader2, Copy, AlertTriangle, CheckCircle2, Lock, ArrowRight, Check, Sparkles, Building, Mail, Smartphone, Key } from "lucide-react";
 import { BsQrCode } from "react-icons/bs";
+import { motion } from "framer-motion";
 
 const registerSchema = z.object({
-  businessName: z.string().min(2, { message: "Business name is required" }),
-  upiId: z.string().regex(/^[\w.-]+@[\w.-]+$/, { message: "Invalid UPI ID format (e.g., name@bank)" }),
+  businessName: z.string().min(2, { message: "Business name must be at least 2 characters" }),
+  upiId: z.string().regex(/^[\w.-]+@[\w.-]+$/, { message: "Invalid UPI format (e.g. yourname@oksbi)" }),
   phone: z
     .string()
-    .regex(/^[6-9]\d{9}$/, { message: "Enter a valid 10-digit Indian mobile number" }),
+    .regex(/^[6-9]\d{9}$/, { message: "Enter a valid 10-digit Indian phone number" }),
   email: z.string().email({ message: "Invalid email address" }),
   password: z.string().min(8, { message: "Password must be at least 8 characters" }),
 });
@@ -39,6 +40,7 @@ export default function Register() {
   const { toast } = useToast();
   const registerMutation = useRegisterMerchant();
   const [apiKeys, setApiKeys] = useState<{ public: string; secret: string } | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -58,12 +60,12 @@ export default function Register() {
         onSuccess: (res) => {
           setApiKeys({ public: res.apiKeyPublic, secret: res.apiKeySecret });
           login(res.token, res.merchant);
-          toast({ title: "Registration successful", description: "Your account has been created." });
+          toast({ title: "Account Initialized", description: "Your merchant profile has been provisioned." });
         },
         onError: (err: any) => {
           toast({
-            title: "Registration failed",
-            description: err?.message || "Could not create account. Please try again.",
+            title: "Registration Failed",
+            description: err?.message || "Could not register account. Please check your inputs.",
             variant: "destructive",
           });
         },
@@ -73,173 +75,256 @@ export default function Register() {
 
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
+    setCopiedKey(type);
+    setTimeout(() => setCopiedKey(null), 2000);
     toast({ title: "Copied!", description: `${type} copied to clipboard.` });
   };
 
   if (apiKeys) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-lg border-primary/50 bg-card shadow-xl">
-          <CardHeader className="space-y-1 text-center">
-            <div className="flex justify-center mb-4">
-              <CheckCircle2 className="h-12 w-12 text-primary" />
+      <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 relative overflow-hidden font-sans">
+        <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-lg">
+          <Card className="glass-card rounded-3xl shadow-2xl border-primary/30 overflow-hidden p-6 sm:p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center mx-auto">
+                <CheckCircle2 className="h-8 w-8" />
+              </div>
+              <h2 className="text-2xl font-black text-foreground">Merchant Account Ready!</h2>
+              <p className="text-xs text-muted-foreground">
+                Your account is active. Copy and store your API credentials now.
+              </p>
             </div>
-            <CardTitle className="text-2xl font-bold tracking-tight">Account Created</CardTitle>
-            <CardDescription className="text-muted-foreground">
-              Save your API keys now. The secret key will not be shown again.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20 text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Important</AlertTitle>
-              <AlertDescription>
-                Please copy your Secret Key and store it securely. We cannot recover it if lost.
+
+            <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-500 rounded-2xl py-3">
+              <AlertTriangle className="h-4 w-4 stroke-amber-500" />
+              <AlertTitle className="text-xs font-bold text-foreground">Important Secret Key Notice</AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground mt-0.5">
+                The Secret Key is only displayed once and cannot be recovered if lost.
               </AlertDescription>
             </Alert>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-foreground">Public Key</label>
+
+            <div className="space-y-3.5">
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Public API Key</label>
                 <div className="flex gap-2">
-                  <Input readOnly value={apiKeys.public} className="font-mono text-sm bg-muted/50" />
-                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(apiKeys.public, "Public Key")}>
-                    <Copy className="h-4 w-4" />
+                  <Input readOnly value={apiKeys.public} className="font-mono text-xs bg-muted/40 h-10 rounded-xl select-all" />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => copyToClipboard(apiKeys.public, "Public Key")}
+                    className="h-10 w-10 shrink-0 rounded-xl"
+                  >
+                    {copiedKey === "Public Key" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-destructive">Secret Key</label>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-rose-400 uppercase tracking-wider">Secret API Key</label>
                 <div className="flex gap-2">
-                  <Input readOnly value={apiKeys.secret} className="font-mono text-sm bg-muted/50 border-destructive/30" />
-                  <Button variant="outline" size="icon" onClick={() => copyToClipboard(apiKeys.secret, "Secret Key")}>
-                    <Copy className="h-4 w-4" />
+                  <Input readOnly value={apiKeys.secret} className="font-mono text-xs bg-muted/40 border-rose-500/30 h-10 rounded-xl select-all" />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => copyToClipboard(apiKeys.secret, "Secret Key")}
+                    className="h-10 w-10 shrink-0 rounded-xl"
+                  >
+                    {copiedKey === "Secret Key" ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
               </div>
             </div>
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full font-semibold" onClick={() => setLocation("/dashboard")}>
-              Go to Dashboard
+
+            <Button 
+              className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-2 shadow-lg shadow-primary/20" 
+              onClick={() => setLocation("/dashboard")}
+            >
+              <span>Enter Merchant Dashboard</span>
+              <ArrowRight className="h-4 w-4" />
             </Button>
-          </CardFooter>
-        </Card>
+          </Card>
+        </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 py-12">
-      <Card className="w-full max-w-md border-border bg-card shadow-lg">
-        <CardHeader className="space-y-2 text-center">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <BsQrCode className="h-7 w-7 text-primary" />
-            <span
-              className="text-2xl font-black tracking-tight"
-            >
-              Free Pi
-            </span>
-          </div>
-          <CardTitle className="text-base font-medium text-foreground">Create Merchant Account</CardTitle>
-          <CardDescription className="text-muted-foreground text-sm">
-            Start accepting UPI payments for free
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="businessName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Acme Corp" disabled={registerMutation.isPending} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="upiId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>UPI ID (VPA)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="merchant@bank" disabled={registerMutation.isPending} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="flex items-center gap-1.5">
-                      Phone Number
-                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground font-normal">
-                        <Lock className="h-3 w-3" /> Cannot be changed after registration
-                      </span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="9876543210"
-                        type="tel"
-                        maxLength={10}
-                        disabled={registerMutation.isPending}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="merchant@example.com" type="email" disabled={registerMutation.isPending} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input placeholder="••••••••" type="password" disabled={registerMutation.isPending} {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full font-semibold" disabled={registerMutation.isPending}>
-                {registerMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Create Account
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-        <CardFooter className="flex flex-col items-center justify-center space-y-2 text-sm text-muted-foreground">
-          <div>
-            Already have an account?{" "}
-            <Link href="/login" className="text-primary hover:underline font-medium">
-              Sign In
+    <div className="min-h-screen w-full flex items-center justify-center bg-background p-4 py-8 relative overflow-hidden font-sans">
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+        animate={{ opacity: 1, scale: 1, y: 0 }} 
+        transition={{ duration: 0.3 }}
+        className="w-full max-w-md"
+      >
+        <Card className="glass-card rounded-3xl shadow-2xl border-border/80 overflow-hidden">
+          <div className="h-1.5 w-full bg-gradient-to-r from-primary to-emerald-400" />
+
+          <CardHeader className="space-y-2 text-center pt-6 pb-2">
+            <Link href="/" className="inline-flex items-center justify-center gap-2.5 mx-auto group">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-tr from-primary to-emerald-400 flex items-center justify-center shadow-lg shadow-primary/25 transition-transform group-hover:scale-105">
+                <BsQrCode className="h-6 w-6 text-slate-950" />
+              </div>
+              <span className="text-2xl font-black tracking-tight text-foreground">
+                Free Pi
+              </span>
             </Link>
-          </div>
-        </CardFooter>
-      </Card>
+
+            <CardTitle className="text-base font-extrabold text-foreground pt-1">
+              Create Merchant Account
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground">
+              Zero fees. Collect UPI payments directly to your bank account.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="px-6 py-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+                <FormField
+                  control={form.control}
+                  name="businessName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">Business Name</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="e.g. Acme Studio" 
+                            disabled={registerMutation.isPending} 
+                            className="pl-9 h-10 rounded-xl bg-muted/40 font-medium text-xs" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="upiId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">Recipient UPI ID (VPA)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="merchant@okhdfcbank" 
+                            disabled={registerMutation.isPending} 
+                            className="pl-9 h-10 rounded-xl font-mono text-xs bg-muted/40 text-primary font-bold" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold flex items-center justify-between">
+                        <span>Mobile Number</span>
+                        <span className="text-[10px] text-muted-foreground font-normal">10-digit Indian mobile</span>
+                      </FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Smartphone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="9876543210"
+                            type="tel"
+                            maxLength={10}
+                            disabled={registerMutation.isPending}
+                            className="pl-9 h-10 rounded-xl font-mono text-xs bg-muted/40"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">Login Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="you@domain.com" 
+                            type="email" 
+                            disabled={registerMutation.isPending} 
+                            className="pl-9 h-10 rounded-xl text-xs bg-muted/40" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-semibold">Password</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input 
+                            placeholder="Min 8 characters" 
+                            type="password" 
+                            disabled={registerMutation.isPending} 
+                            className="pl-9 h-10 rounded-xl font-mono text-xs bg-muted/40" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[11px]" />
+                    </FormItem>
+                  )}
+                />
+
+                <Button 
+                  type="submit" 
+                  className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-2 shadow-lg shadow-primary/20 mt-2" 
+                  disabled={registerMutation.isPending}
+                >
+                  {registerMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span>Complete Registration</span>
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+
+          <CardFooter className="flex flex-col items-center justify-center py-4 border-t border-border/60 text-xs text-muted-foreground">
+            <div>
+              Already have an account?{" "}
+              <Link href="/login" className="text-primary hover:underline font-bold">
+                Sign In
+              </Link>
+            </div>
+          </CardFooter>
+        </Card>
+      </motion.div>
     </div>
   );
 }

@@ -299,7 +299,7 @@ export default function Admingrowth() {
                       <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#9CA3AF" }} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fontWeight: 700, fill: "#9CA3AF" }} />
                       <Tooltip contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 12px 30px rgba(0,0,0,0.12)" }} />
-                      <Line type="monotone" dataKey="amount" name="Amount (Rs)" stroke="#D4AF37" strokeWidth={4} dot={{ r: 4 }} />
+                      <Line type="monotone" dataKey="amount" name="Amount (Rs)" stroke="#10B981" strokeWidth={4} dot={{ r: 4 }} />
                       <Line type="monotone" dataKey="transactions" name="Transactions" stroke="#2563EB" strokeWidth={3} dot={{ r: 3 }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -347,7 +347,7 @@ export default function Admingrowth() {
                       <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }} />
                       <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: "#9CA3AF" }} />
                       <Tooltip contentStyle={{ borderRadius: 16, border: "none", boxShadow: "0 12px 30px rgba(0,0,0,0.12)" }} />
-                      <Bar dataKey="amount" name="Amount (Rs)" fill="#D4AF37" radius={[8, 8, 0, 0]} />
+                      <Bar dataKey="amount" name="Amount (Rs)" fill="#10B981" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { Link } from "wouter";
 
 export default function Landing() {
@@ -15,52 +15,26 @@ export default function Landing() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const handleFaqClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const item = e.currentTarget;
-    const isActive = item.classList.contains("active");
-    
-    // Close all other items
-    const faqItems = document.querySelectorAll(".faq-item");
-    faqItems.forEach((otherItem) => {
-      otherItem.classList.remove("active");
-    });
-
-    // Toggle current item
-    if (!isActive) {
-      item.classList.add("active");
-    }
-  };
-
-  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    e.preventDefault();
-    const token = window.localStorage.getItem("upi_token");
-
-    if (token) {
-      window.location.href = "/dashboard";
-      return;
-    }
-
-    window.location.reload();
-  };
-
   return (
-    <div className="landing-page" style={{ 
-      backgroundColor: "#0A1612", 
-      color: "#ffffff",
-      minHeight: "100vh",
-      fontFamily: "'Inter', sans-serif"
-    }}>
+    <div className="landing-page">
       <style dangerouslySetInnerHTML={{__html: `
-        :root {
-            --bg: #0A1612;
-            --card-bg: #111d18;
-            --border: rgba(255, 255, 255, 0.08);
-            --border-hover: rgba(255, 255, 255, 0.2);
-            --primary: #D4AF37;
-            --primary-hover: #b8972e;
-            --text: #ffffff;
-            --text-muted: rgba(255, 255, 255, 0.6);
-            --accent: #D4AF37;
+        .landing-page {
+            --bg: #060913;
+            --card-bg: #101923;
+            --border: rgba(218, 230, 231, 0.12);
+            --border-hover: rgba(112, 220, 180, 0.42);
+            --primary: #78d9b1;
+            --primary-hover: #91e4c1;
+            --text: #f4f5f2;
+            --text-muted: #aab6b8;
+            --accent: #78d9b1;
+            min-height: 100vh;
+            overflow: hidden;
+            background: #0a1116;
+            color: var(--text);
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
         }
 
         .landing-page * {
@@ -575,17 +549,743 @@ export default function Landing() {
             .landing-page .hero-btns {
                 flex-direction: column;
             }
+        }
+
+        .landing-page {
+            --container-width: 1240px;
+            background-image: radial-gradient(ellipse at 78% 12%, rgba(68, 131, 111, 0.12), transparent 32rem);
+        }
+
+        .landing-page .container {
+            max-width: var(--container-width);
+            padding-inline: clamp(20px, 5vw, 64px);
+        }
+
+        .landing-page .skip-link {
+            position: absolute;
+            z-index: 101;
+            top: 12px;
+            left: 12px;
+            padding: 10px 14px;
+            transform: translateY(-160%);
+            border-radius: 6px;
+            background: var(--primary);
+            color: #09130f;
+            font-weight: 700;
+        }
+
+        .landing-page .skip-link:focus {
+            transform: translateY(0);
+        }
+
+        .landing-page .navbar {
+            height: 76px;
+            background: rgba(10, 17, 22, 0.72);
+            backdrop-filter: blur(18px);
+            border-bottom-color: var(--border);
+        }
+
+        .landing-page .navbar.scrolled {
+            background: rgba(10, 17, 22, 0.92);
+        }
+
+        .landing-page .logo {
+            gap: 10px;
+            font-size: 1.1rem;
+            letter-spacing: -0.04em;
+        }
+
+        .landing-page .logo svg,
+        .landing-page .footer-logo svg {
+            color: var(--primary);
+        }
+
+        .landing-page .btn {
+            min-height: 44px;
+            border-radius: 7px;
+            transition: background-color 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .landing-page .btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .landing-page .btn:active {
+            transform: translateY(1px) scale(0.99);
+        }
+
+        .landing-page a:focus-visible,
+        .landing-page summary:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 4px;
+        }
+
+        .landing-page .btn-primary {
+            background: var(--primary);
+            color: #0b1712;
+        }
+
+        .landing-page .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .landing-page .btn-outline {
+            border-color: rgba(218, 230, 231, 0.22);
+        }
+
+        .landing-page .btn-outline:hover {
+            border-color: var(--border-hover);
+            background: rgba(120, 217, 177, 0.06);
+        }
+
+        .landing-page .hero {
+            position: relative;
+            padding: clamp(132px, 16vw, 192px) 0 104px;
+            text-align: left;
+        }
+
+        .landing-page .hero::before {
+            position: absolute;
+            top: 19%;
+            right: -17rem;
+            width: 40rem;
+            height: 40rem;
+            border: 1px solid rgba(120, 217, 177, 0.09);
+            border-radius: 50%;
+            content: "";
+            pointer-events: none;
+        }
+
+        .landing-page .hero-layout {
+            position: relative;
+            display: grid;
+            grid-template-columns: minmax(0, 1.02fr) minmax(360px, 0.98fr);
+            gap: clamp(40px, 7vw, 96px);
+            align-items: center;
+        }
+
+        .landing-page .hero-copy {
+            max-width: 610px;
+        }
+
+        .landing-page .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 24px;
+            color: #b7c6c2;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .landing-page .eyebrow::before {
+            width: 22px;
+            height: 1px;
+            background: var(--primary);
+            content: "";
+        }
+
+        .landing-page .hero h1 {
+            max-width: 650px;
+            margin: 0 0 22px;
+            font-size: clamp(3.1rem, 6vw, 5.65rem);
+            font-weight: 600;
+            letter-spacing: -0.075em;
+            line-height: 0.99;
+            text-wrap: balance;
+        }
+
+        .landing-page .hero h1 em {
+            color: var(--primary);
+            font-style: normal;
+        }
+
+        .landing-page .hero-copy > p {
+            max-width: 56ch;
+            margin: 0 0 30px;
+            color: var(--text-muted);
+            font-size: 1.04rem;
+            line-height: 1.8;
+            text-wrap: pretty;
+        }
+
+        .landing-page .hero-copy > p strong {
+            color: #e2e8e3;
+            font-weight: 600;
+        }
+
+        .landing-page .hero-btns {
+            justify-content: flex-start;
+            gap: 12px;
+            margin-bottom: 34px;
+        }
+
+        .landing-page .hero .btn {
+            padding: 13px 21px;
+            font-size: 0.94rem;
+        }
+
+        .landing-page .app-logos {
+            justify-content: flex-start;
+            gap: 13px;
+            color: #9ba9a8;
+            font-size: 0.82rem;
+            opacity: 1;
+        }
+
+        .landing-page .app-logos p {
+            width: auto;
+            margin: 0 10px 0 0;
+            color: #7f9190;
+            font-size: 0.69rem;
+            letter-spacing: 0.11em;
+        }
+
+        .landing-page .app-logos span {
+            color: #bac4c2 !important;
+        }
+
+        .landing-page .payment-preview {
+            position: relative;
+            max-width: 480px;
+            justify-self: end;
+            padding: 14px;
+            border: 1px solid rgba(218, 230, 231, 0.13);
+            border-radius: 17px;
+            background: linear-gradient(145deg, rgba(28, 42, 47, 0.94), rgba(15, 25, 31, 0.96));
+            box-shadow: 0 34px 88px rgba(0, 0, 0, 0.33), inset 0 1px rgba(255, 255, 255, 0.06);
+            transform: rotate(1.2deg);
+        }
+
+        .landing-page .preview-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 8px 16px;
+            color: #9aa9a8;
+            font-size: 0.72rem;
+        }
+
+        .landing-page .preview-dots {
+            display: flex;
+            gap: 5px;
+        }
+
+        .landing-page .preview-dots span {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #71817e;
+        }
+
+        .landing-page .preview-window {
+            padding: clamp(23px, 4vw, 40px);
+            border: 1px solid rgba(218, 230, 231, 0.1);
+            border-radius: 11px;
+            background: #f1f4ef;
+            color: #162320;
+        }
+
+        .landing-page .preview-brand {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            color: #44544f;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .landing-page .preview-mark {
+            display: grid;
+            width: 27px;
+            height: 27px;
+            place-items: center;
+            border-radius: 7px;
+            background: #dcefe5;
+            color: #18714e;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .landing-page .preview-label {
+            margin: 30px 0 2px;
+            color: #73817b;
+            font-size: 0.77rem;
+        }
+
+        .landing-page .preview-amount {
+            color: #13201c;
+            font-size: clamp(2.25rem, 4.5vw, 3.3rem);
+            font-weight: 600;
+            letter-spacing: -0.07em;
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .landing-page .preview-divider {
+            height: 1px;
+            margin: 22px 0;
+            background: #dfe6e0;
+        }
+
+        .landing-page .preview-order {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            color: #687771;
+            font-size: 0.77rem;
+        }
+
+        .landing-page .preview-order strong {
+            color: #25332e;
+            font-weight: 600;
+        }
+
+        .landing-page .preview-steps {
+            display: grid;
+            gap: 11px;
+            margin-top: 22px;
+        }
+
+        .landing-page .preview-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #52615a;
+            font-size: 0.74rem;
+        }
+
+        .landing-page .preview-check {
+            display: grid;
+            width: 21px;
+            height: 21px;
+            flex: 0 0 21px;
+            place-items: center;
+            border-radius: 50%;
+            background: #dcefe5;
+            color: #18714e;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .landing-page .preview-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 23px;
+            padding: 12px 13px;
+            border-radius: 7px;
+            background: #e6eee8;
+            color: #52615a;
+            font-size: 0.72rem;
+        }
+
+        .landing-page .preview-status strong {
+            color: #9b6a25;
+            font-weight: 600;
+        }
+
+        .landing-page section {
+            padding: clamp(72px, 9vw, 118px) 0;
+            scroll-margin-top: 72px;
+        }
+
+        .landing-page .section-header {
+            max-width: 660px;
+            margin: 0 0 40px;
+            text-align: left;
+        }
+
+        .landing-page .section-header h2,
+        .landing-page .api-content h2 {
+            margin-bottom: 12px;
+            font-size: clamp(2rem, 4vw, 3.2rem);
+            font-weight: 600;
+            letter-spacing: -0.06em;
+            line-height: 1.08;
+            text-wrap: balance;
+        }
+
+        .landing-page .section-header p,
+        .landing-page .api-content p {
+            max-width: 58ch;
+            color: var(--text-muted);
+            font-size: 1rem;
+            line-height: 1.75;
+        }
+
+        .landing-page .card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: linear-gradient(145deg, rgba(23, 36, 42, 0.78), rgba(14, 24, 30, 0.78));
+            padding: 27px;
+            transition: border-color 200ms ease, transform 200ms ease, background-color 200ms ease;
+        }
+
+        .landing-page .card:hover {
+            transform: translateY(-3px);
+            border-color: var(--border-hover);
+        }
+
+        .landing-page .step-number {
+            width: 36px;
+            height: 36px;
+            border: 1px solid rgba(120, 217, 177, 0.22);
+            border-radius: 8px;
+            background: rgba(120, 217, 177, 0.08);
+            color: var(--primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+        }
+
+        .landing-page .step-card h3,
+        .landing-page .features-grid h3,
+        .landing-page .roadmap-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.08rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .landing-page .step-card p,
+        .landing-page .features-grid p,
+        .landing-page .roadmap-card p {
+            max-width: 44ch;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.75;
+        }
+
+        .landing-page #how-it-works .steps-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 15px;
+        }
+
+        .landing-page .api-preview {
+            grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
+            gap: clamp(36px, 7vw, 92px);
+        }
+
+        .landing-page .api-content p {
+            margin-bottom: 27px;
+        }
+
+        .landing-page .code-block {
+            border-color: var(--border);
+            border-radius: 10px;
+            background: #10191f;
+            box-shadow: 0 26px 62px rgba(0, 0, 0, 0.2);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.76rem;
+            line-height: 1.85;
+        }
+
+        .landing-page .token.key { color: #9ad9bd; }
+        .landing-page .token.string { color: #d5b58c; }
+        .landing-page .token.number { color: #c7d49e; }
+
+        .landing-page .features-grid {
+            grid-template-columns: repeat(12, minmax(0, 1fr));
+            gap: 14px;
+        }
+
+        .landing-page .features-grid > .card {
+            grid-column: span 4;
+        }
+
+        .landing-page .features-grid > .card:first-child {
+            grid-column: span 8;
+        }
+
+        .landing-page .feature-icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 22px;
+            border: 1px solid rgba(120, 217, 177, 0.16);
+            border-radius: 8px;
+            background: rgba(120, 217, 177, 0.07);
+            color: var(--primary);
+        }
+
+        .landing-page .apps-badges {
+            justify-content: flex-start;
+            gap: 10px;
+        }
+
+        .landing-page .app-badge {
+            padding: 10px 15px;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.025);
+            color: #c1ccca;
+            font-size: 0.82rem;
+        }
+
+        .landing-page .badge-soon {
+            top: 22px;
+            right: 22px;
+            border-radius: 4px;
+            background: rgba(120, 217, 177, 0.09);
+            color: #a9d9c4;
+            letter-spacing: 0.02em;
+        }
+
+        .landing-page .faq-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 30px;
+            max-width: 100%;
+        }
+
+        .landing-page .faq-item {
+            margin: 0;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            border-radius: 0;
+            background: transparent;
+        }
+
+        .landing-page .faq-question {
+            min-height: 66px;
+            padding: 15px 2px;
+            list-style: none;
+            color: #e4e9e5;
+            font-size: 0.96rem;
+            cursor: pointer;
+        }
+
+        .landing-page .faq-question::-webkit-details-marker {
+            display: none;
+        }
+
+        .landing-page .faq-answer {
+            max-height: none;
+            padding: 0 28px 0 2px;
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            line-height: 1.75;
+            transition: padding 180ms ease;
+        }
+
+        .landing-page .faq-item[open] .faq-answer {
+            padding-bottom: 18px;
+        }
+
+        .landing-page .faq-icon {
+            color: var(--primary);
+            font-size: 1.3rem;
+            font-weight: 400;
+            transition: transform 180ms ease;
+        }
+
+        .landing-page .faq-item[open] .faq-icon {
+            transform: rotate(45deg);
+        }
+
+        .landing-page .final-cta {
+            padding: clamp(70px, 10vw, 118px) 0;
+            border: 0;
+            background: radial-gradient(ellipse at 50% 0%, rgba(71, 131, 109, 0.14), transparent 55%), #10191e;
+            text-align: left;
+        }
+
+        .landing-page .final-cta h2 {
+            max-width: 730px;
+            font-size: clamp(2.3rem, 5vw, 4rem);
+            font-weight: 600;
+            letter-spacing: -0.07em;
+            line-height: 1.02;
+            text-wrap: balance;
+        }
+
+        .landing-page .final-cta p {
+            margin-bottom: 26px;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .landing-page .final-cta > .container > div {
+            margin-top: 23px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .landing-page .cta-login {
+            margin-left: 8px;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .landing-page footer {
+            padding: 56px 0 34px;
+            background: #0a1116;
+        }
+
+        .landing-page .footer-content {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 0.8fr);
+            gap: 32px;
+            margin-bottom: 42px;
+        }
+
+        .landing-page .footer-col h4 {
+            color: #94a19f;
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+        }
+
+        .landing-page .footer-col ul a {
+            color: #c2ccca;
+        }
+
+        .landing-page .footer-right p,
+        .landing-page .footer-tagline,
+        .landing-page .footer-bottom {
+            color: #9aa8a6;
+        }
+
+        @media (max-width: 900px) {
+            .landing-page .hero-layout {
+                grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+                gap: 30px;
+            }
+
+            .landing-page .features-grid > .card,
+            .landing-page .features-grid > .card:first-child {
+                grid-column: span 6;
+            }
+
+            .landing-page .footer-content {
+                grid-template-columns: 1fr 1.5fr;
+                text-align: left;
+            }
+
+            .landing-page .footer-links {
+                justify-content: flex-end;
+                gap: 30px;
+            }
+
+            .landing-page .footer-logo {
+                justify-content: flex-start;
+            }
+
+            .landing-page .footer-right {
+                grid-column: 1 / -1;
+                text-align: left;
+            }
+        }
+
+        @media (max-width: 680px) {
+            .landing-page .navbar {
+                height: 68px;
+            }
+
             .landing-page .nav-links {
-                display: none;
+                gap: 4px;
+            }
+
+            .landing-page .nav-links .btn {
+                padding: 8px 10px;
+                font-size: 0.77rem;
+            }
+
+            .landing-page .hero {
+                padding: 122px 0 70px;
+            }
+
+            .landing-page .hero-layout {
+                grid-template-columns: 1fr;
+                gap: 50px;
+            }
+
+            .landing-page .hero h1 {
+                font-size: clamp(3rem, 13vw, 4.4rem);
+            }
+
+            .landing-page .hero-copy > p {
+                font-size: 0.96rem;
+            }
+
+            .landing-page .hero-btns {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .landing-page .app-logos {
+                gap: 9px;
+                flex-wrap: wrap;
+            }
+
+            .landing-page .app-logos p {
+                width: 100%;
+                margin-bottom: 2px;
+            }
+
+            .landing-page .payment-preview {
+                width: min(100%, 460px);
+                justify-self: center;
+                transform: none;
+            }
+
+            .landing-page .section-header {
+                margin-bottom: 28px;
+            }
+
+            .landing-page #how-it-works .steps-grid,
+            .landing-page .faq-list {
+                grid-template-columns: 1fr;
+            }
+
+            .landing-page .api-preview {
+                grid-template-columns: 1fr;
+                gap: 34px;
+            }
+
+            .landing-page .code-block {
+                padding: 18px;
+                font-size: 0.68rem;
+            }
+
+            .landing-page .features-grid > .card,
+            .landing-page .features-grid > .card:first-child {
+                grid-column: 1 / -1;
+            }
+
+            .landing-page .footer-content {
+                grid-template-columns: 1fr;
+                text-align: left;
+            }
+
+            .landing-page .footer-links {
+                justify-content: flex-start;
+                flex-direction: row;
+                gap: 44px;
+            }
+
+            .landing-page .footer-right {
+                grid-column: auto;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .landing-page *,
+            .landing-page *::before,
+            .landing-page *::after {
+                scroll-behavior: auto !important;
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
             }
         }
       `}} />
 
+      <a className="skip-link" href="#main-content">Skip to content</a>
+
       {/* Navbar */}
       <nav className="navbar" id="navbar">
           <div className="container nav-content">
-              <Link href="/" className="logo" onClick={handleLogoClick}>
-                  <svg stroke="#D4AF37" fill="#D4AF37" strokeWidth="0" viewBox="0 0 16 16" height="28" width="28" xmlns="http://www.w3.org/2000/svg">
+              <Link href="/" className="logo" aria-label="Free Pi home">
+                  <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" height="28" width="28" xmlns="http://www.w3.org/2000/svg">
                       <path d="M0 0h7v7H0V0zm1 1v5h5V1H1z"></path>
                       <path d="M2 2h3v3H2V2z"></path>
                       <path d="M0 9h7v7H0V9zm1 1v5h5v-5H1z"></path>
@@ -603,33 +1303,61 @@ export default function Landing() {
           </div>
       </nav>
 
+      <main id="main-content">
       {/* Hero Section */}
       <section className="hero">
           <div className="container">
-              <h1>Accept UPI Payments Without a Payment Gateway</h1>
-              <p>Free, open, developer-friendly UPI based Peer to Peer irreversible payment verification & collection system for merchants.<br /><b>No transaction fees. No monthly charges. No hidden costs.</b><br/> Fast-tracked Manual payment verification & Automated collection system for payments below ₹2,000.</p>
-              <div className="hero-btns">
-                  <Link href="/register" className="btn btn-primary">Start for Free &rarr;</Link>
-                  <Link href="/dashboard" className="btn btn-outline">View Dashboard &rarr;</Link>
-              </div>
-              <div className="app-logos">
-                  <p>Works with all major UPI apps</p>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>Google Pay</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>&bull;</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>PhonePe</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>&bull;</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>Paytm</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>&bull;</span>
-                  <span style={{color: "var(--text-muted)", fontWeight: 500}}>BHIM</span>
+              <div className="hero-layout">
+                  <div className="hero-copy">
+                      <span className="eyebrow">Open-source UPI payments</span>
+                      <h1>UPI payments, without the <em>gateway.</em></h1>
+                      <p>Create hosted payment pages with one API call. Customers pay in their UPI app, then you review each UTR in your dashboard. <strong>No transaction fees or monthly charges.</strong></p>
+                      <div className="hero-btns">
+                          <Link href="/register" className="btn btn-primary">Start accepting payments <span aria-hidden="true">&rarr;</span></Link>
+                          <a href="#how-it-works" className="btn btn-outline">See how it works <span aria-hidden="true">&darr;</span></a>
+                      </div>
+                      <div className="app-logos" aria-label="Compatible with major UPI apps">
+                          <p>Pay with</p>
+                          <span>Google Pay</span>
+                          <span aria-hidden="true">·</span>
+                          <span>PhonePe</span>
+                          <span aria-hidden="true">·</span>
+                          <span>Paytm</span>
+                          <span aria-hidden="true">·</span>
+                          <span>BHIM</span>
+                      </div>
+                  </div>
+                  <div className="payment-preview" role="img" aria-label="Example hosted checkout for a 1,250 rupee payment, awaiting manual UTR review.">
+                      <div className="preview-topbar">
+                          <span className="preview-dots" aria-hidden="true"><span /><span /><span /></span>
+                          <span>checkout.freepi.in</span>
+                          <span aria-hidden="true">•••</span>
+                      </div>
+                      <div className="preview-window">
+                          <div className="preview-brand"><span className="preview-mark" aria-hidden="true">fp</span> Meadow Studio</div>
+                          <p className="preview-label">Amount due</p>
+                          <div className="preview-amount">₹1,250</div>
+                          <div className="preview-divider" />
+                          <div className="preview-order"><span>Order</span><strong>MS-2048</strong></div>
+                          <div className="preview-steps">
+                              <div className="preview-step"><span className="preview-check" aria-hidden="true">1</span>Pay with any UPI app</div>
+                              <div className="preview-step"><span className="preview-check" aria-hidden="true">2</span>Submit your UTR</div>
+                              <div className="preview-step"><span className="preview-check" aria-hidden="true">3</span>Merchant reviews payment</div>
+                          </div>
+                          <div className="preview-status"><span>Payment status</span><strong>Awaiting review</strong></div>
+                      </div>
+                  </div>
               </div>
           </div>
       </section>
 
       {/* How It Works */}
-      <section>
+      <section id="how-it-works">
           <div className="container">
               <div className="section-header">
-                  <h2>How It Works</h2>
+                  <span className="eyebrow">A simpler checkout flow</span>
+                  <h2>From API call to UPI payment.</h2>
+                  <p>Free Pi hosts checkout and keeps payment status in one place. You stay in control of verification.</p>
               </div>
               <div className="steps-grid">
                   <div className="card step-card">
@@ -652,11 +1380,11 @@ export default function Landing() {
       </section>
 
       {/* API Preview Section */}
-      <section>
+      <section id="api-preview">
           <div className="container">
                   <div className="api-preview">
                   <div className="api-content">
-                      <h2>Integrate in minutes</h2>
+                      <h2>One request starts checkout.</h2>
                       <p>Create a payment from your server, redirect the customer to the hosted payment page, and let Free Pi collect customer details, show the QR, and capture UTR proof.</p>
                       <Link href="/register" className="btn btn-primary">Get Started</Link>
                   </div>
@@ -702,7 +1430,8 @@ export default function Landing() {
       <section>
           <div className="container">
               <div className="section-header">
-                  <h2>Everything you need</h2>
+                  <span className="eyebrow">Built for small teams</span>
+                  <h2>The essentials, without the overhead.</h2>
               </div>
               <div className="features-grid">
                   <div className="card">
@@ -753,20 +1482,21 @@ export default function Landing() {
 
       {/* Supported UPI Apps */}
       <section>
-          <div className="container" style={{textAlign: "center"}}>
+          <div className="container">
               <div className="section-header">
-                  <h2>Works With Every UPI App</h2>
+                  <span className="eyebrow">Broad UPI compatibility</span>
+                  <h2>Customers pay with their UPI app.</h2>
+                  <p>Use UPI intent links or scan a QR code. No special app is required.</p>
               </div>
               <div className="apps-badges">
                   <span className="app-badge">Google Pay</span>
-                  <span className="app-badge">PhonePe</span>
-                  <span className="app-badge">Paytm</span>
                   <span className="app-badge">PhonePe</span>
                   <span className="app-badge">Paytm</span>
                   <span className="app-badge">BHIM</span>
                   <span className="app-badge">Mobikwik</span>
                   <span className="app-badge">CRED</span>
                   <span className="app-badge">Freecharge</span>
+                  <span className="app-badge">Any UPI app</span>
               </div>
           </div>
       </section>
@@ -775,7 +1505,7 @@ export default function Landing() {
       <section>
           <div className="container">
               <div className="section-header">
-                  <h2>What's Coming Next</h2>
+                  <h2>What we're working on.</h2>
                   <p>Free Pi is actively developed. Here's what's on the roadmap.</p>
               </div>
               <div className="roadmap-grid">
@@ -817,54 +1547,55 @@ export default function Landing() {
       <section>
           <div className="container">
               <div className="section-header">
-                  <h2>Frequently Asked Questions</h2>
+                  <span className="eyebrow">Before you get started</span>
+                  <h2>Common questions.</h2>
               </div>
               <div className="faq-list">
-                  <div className="faq-item" onClick={handleFaqClick}>
-                      <div className="faq-question">
+                  <details className="faq-item">
+                      <summary className="faq-question">
                           Is Free Pi really free?
-                          <span className="faq-icon">+</span>
-                      </div>
+                          <span className="faq-icon" aria-hidden="true">+</span>
+                      </summary>
                       <div className="faq-answer">
                           <p>Yes. No transaction fees, no monthly plans, no hidden charges. Free Pi is an open, indie project.</p>
                       </div>
-                  </div>
-                  <div className="faq-item" onClick={handleFaqClick}>
-                      <div className="faq-question">
+                  </details>
+                  <details className="faq-item">
+                      <summary className="faq-question">
                           How is payment verified?
-                          <span className="faq-icon">+</span>
-                      </div>
+                          <span className="faq-icon" aria-hidden="true">+</span>
+                      </summary>
                       <div className="faq-answer">
                           <p>After paying, the customer enters their UTR (transaction reference number) from their UPI app. You confirm it from your dashboard.</p>
                       </div>
-                  </div>
-                  <div className="faq-item" onClick={handleFaqClick}>
-                      <div className="faq-question">
+                  </details>
+                  <details className="faq-item">
+                      <summary className="faq-question">
                           Which UPI apps are supported?
-                          <span className="faq-icon">+</span>
-                      </div>
+                          <span className="faq-icon" aria-hidden="true">+</span>
+                      </summary>
                       <div className="faq-answer">
-                          <p>All UPI apps including Google Pay, PhonePe, Paytm, PhonePe, Paytm, BHIM, Amazon Pay and any app that supports the UPI protocol.</p>
+                          <p>Google Pay, PhonePe, Paytm, BHIM, Amazon Pay and any app that supports the UPI protocol.</p>
                       </div>
-                  </div>
-                  <div className="faq-item" onClick={handleFaqClick}>
-                      <div className="faq-question">
+                  </details>
+                  <details className="faq-item">
+                      <summary className="faq-question">
                           Is it safe for production use?
-                          <span className="faq-icon">+</span>
-                      </div>
+                          <span className="faq-icon" aria-hidden="true">+</span>
+                      </summary>
                       <div className="faq-answer">
                           <p>Free Pi is an indie project under active development. Use it with that in mind. UTR verification is manual, not bank-validated.</p>
                       </div>
-                  </div>
-                  <div className="faq-item" onClick={handleFaqClick}>
-                      <div className="faq-question">
+                  </details>
+                  <details className="faq-item">
+                      <summary className="faq-question">
                           Can I self-host Free Pi?
-                          <span className="faq-icon">+</span>
-                      </div>
+                          <span className="faq-icon" aria-hidden="true">+</span>
+                      </summary>
                       <div className="faq-answer">
                           <p>Yes. The entire stack runs on Cloudflare Pages, Workers, and D1 — all free tier. Fork and deploy your own instance.</p>
                       </div>
-                  </div>
+                  </details>
               </div>
           </div>
       </section>
@@ -874,13 +1605,15 @@ export default function Landing() {
           <div className="container">
               <h2>Start Accepting UPI Payments Today</h2>
               <p>Free forever. No credit card required.</p>
-              <Link href="/register" className="btn btn-primary" style={{marginBottom: "24px"}}>Get Started Free &rarr;</Link>
+              <Link href="/register" className="btn btn-primary">Get started free <span aria-hidden="true">&rarr;</span></Link>
               <div>
-                  <span style={{color: "var(--text-muted)"}}>Already have an account?</span>
-                  <Link href="/login" style={{color: "var(--primary)", fontWeight: 500, marginLeft: "8px"}}>Sign In</Link>
+                  <span>Already have an account?</span>
+                  <Link href="/login" className="cta-login">Sign in</Link>
               </div>
           </div>
       </section>
+
+      </main>
 
       {/* Footer */}
       <footer>
@@ -888,7 +1621,7 @@ export default function Landing() {
               <div className="footer-content">
                   <div>
                       <Link href="/" className="footer-logo">
-                          <svg stroke="#D4AF37" fill="#D4AF37" strokeWidth="0" viewBox="0 0 16 16" height="24" width="24" xmlns="http://www.w3.org/2000/svg">
+                          <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 16 16" height="24" width="24" xmlns="http://www.w3.org/2000/svg">
                               <path d="M0 0h7v7H0V0zm1 1v5h5V1H1z"></path>
                               <path d="M2 2h3v3H2V2z"></path>
                               <path d="M0 9h7v7H0V9zm1 1v5h5v-5H1z"></path>
@@ -906,16 +1639,16 @@ export default function Landing() {
                           <h4>Product</h4>
                           <ul>
                               <li><Link href="/dashboard">Dashboard</Link></li>
-                              <li><Link href="/dashboard/api-keys">API Keys</Link></li>
+                              <li><Link href="/api-keys">API keys</Link></li>
                               <li><Link href="/analytics">Analytics</Link></li>
                           </ul>
                       </div>
                       <div className="footer-col">
                           <h4>Resources</h4>
                           <ul>
-                              <li><a href="#">Documentation</a></li>
-                              <li><a href="#">Support</a></li>
-                              <li><a href="https://github.com/byrohithreddy/Free-pi.git">GitHub</a></li>
+                              <li><a href="https://github.com/byrohithreddy/Free-pi#readme">Documentation</a></li>
+                              <li><a href="https://github.com/byrohithreddy/Free-pi/issues">Support</a></li>
+                              <li><a href="https://github.com/byrohithreddy/Free-pi">GitHub</a></li>
                           </ul>
                       </div>
                   </div>
@@ -924,7 +1657,7 @@ export default function Landing() {
                       <Link href="/donate" className="btn btn-outline">Donate with UPI</Link>
                   </div>
               </div>
-              <div style={{borderTop: "1px solid var(--border)", paddingTop: "32px", textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem"}}>
+              <div className="footer-bottom">
                   &copy; 2026 Free Pi. Built with ❤️ for Indian Micro Enterprises.
               </div>
           </div>

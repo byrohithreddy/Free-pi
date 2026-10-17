@@ -21,10 +21,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Loader2, Copy, ExternalLink, QrCode } from "lucide-react";
+import { Loader2, Copy, ExternalLink, QrCode, Check, RefreshCw, Sparkles, IndianRupee } from "lucide-react";
+import { motion } from "framer-motion";
 
 const createPaymentSchema = z.object({
   amount: z.coerce.number().min(1, { message: "Amount must be at least ₹1" }).max(100000, { message: "Amount cannot exceed ₹100,000" }),
@@ -45,12 +45,15 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
   const queryClient = useQueryClient();
   const createMutation = useCreatePayment();
   const [createdUrl, setCreatedUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generateOrderId = () => `ORD-${Date.now().toString().slice(-6)}`;
 
   const form = useForm<CreatePaymentFormValues>({
     resolver: zodResolver(createPaymentSchema),
     defaultValues: {
       amount: undefined,
-      orderId: `ORD-${Date.now().toString().slice(-6)}`,
+      orderId: generateOrderId(),
       description: "",
       customerPhone: "",
     },
@@ -61,18 +64,18 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
       setTimeout(() => {
         form.reset({
           amount: undefined,
-          orderId: `ORD-${Date.now().toString().slice(-6)}`,
+          orderId: generateOrderId(),
           description: "",
           customerPhone: "",
         });
         setCreatedUrl(null);
+        setCopied(false);
       }, 200);
     }
     onOpenChange(newOpen);
   };
 
   const onSubmit = (data: CreatePaymentFormValues) => {
-    // Convert Rupee to Paise (1 Rupee = 100 Paise)
     const amountInPaise = Math.round(data.amount * 100);
     
     createMutation.mutate(
@@ -85,20 +88,18 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
       {
         onSuccess: (res) => {
           setCreatedUrl(res.paymentUrl);
-          
-          // Invalidate queries to refresh lists
           queryClient.invalidateQueries({ queryKey: getListPaymentsQueryKey() });
           queryClient.invalidateQueries({ queryKey: getGetMerchantStatsQueryKey() });
           
           toast({
-            title: "Payment Link Created",
-            description: "Successfully generated UPI payment request.",
+            title: "Payment Link Ready",
+            description: "UPI payment intent created successfully.",
           });
         },
         onError: (err: any) => {
           toast({
-            title: "Failed to create payment",
-            description: err?.message || "An error occurred.",
+            title: "Creation Failed",
+            description: err?.message || "An unexpected error occurred.",
             variant: "destructive",
           });
         },
@@ -109,75 +110,139 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
   const copyToClipboard = () => {
     if (createdUrl) {
       navigator.clipboard.writeText(createdUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
       toast({
-        title: "Copied to clipboard",
-        description: "Payment link copied.",
+        title: "Link Copied",
+        description: "Customer payment URL copied to clipboard.",
       });
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{createdUrl ? "Payment Link Ready" : "Create Payment Request"}</DialogTitle>
-          <DialogDescription>
-            {createdUrl 
-              ? "Share this link with your customer to collect payment via UPI."
-              : "Generate a new UPI payment link for a customer order."}
-          </DialogDescription>
+      <DialogContent className="sm:max-w-md bg-card border-border rounded-3xl p-6 shadow-2xl">
+        <DialogHeader className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="h-9 w-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center border border-primary/20">
+              <QrCode className="h-5 w-5" />
+            </div>
+            <div>
+              <DialogTitle className="text-xl font-extrabold text-foreground">
+                {createdUrl ? "Payment Link Created!" : "New Payment Request"}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {createdUrl 
+                  ? "Share this direct UPI checkout URL with your buyer"
+                  : "Generate a hosted UPI intent link & QR code for your customer"}
+              </DialogDescription>
+            </div>
+          </div>
         </DialogHeader>
 
         {createdUrl ? (
-          <div className="space-y-6 py-4">
-            <div className="flex flex-col items-center justify-center p-6 bg-muted/30 rounded-lg border border-border">
-              <QrCode className="h-16 w-16 text-primary mb-4" />
-              <div className="text-sm text-center text-muted-foreground mb-4">
-                Link generated successfully. Customers can pay via GPay, or any UPI app.
+          <div className="space-y-5 py-2">
+            <div className="p-5 rounded-2xl bg-muted/30 border border-border flex flex-col items-center justify-center text-center space-y-3">
+              <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center border border-emerald-500/20">
+                <Check className="h-6 w-6" />
               </div>
-              <div className="flex w-full gap-2">
-                <Input readOnly value={createdUrl} className="font-mono text-xs" />
-                <Button variant="outline" size="icon" onClick={copyToClipboard} title="Copy Link">
-                  <Copy className="h-4 w-4" />
+              <div>
+                <p className="text-sm font-bold text-foreground">Hosted Checkout Online</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Customers can scan QR, launch Google Pay/PhonePe, or submit bank UTR references.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 w-full pt-1">
+                <Input 
+                  readOnly 
+                  value={createdUrl} 
+                  className="font-mono text-xs h-10 rounded-xl bg-background select-all" 
+                />
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  onClick={copyToClipboard} 
+                  className="h-10 w-10 shrink-0 rounded-xl"
+                  title="Copy link"
+                >
+                  {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
                 </Button>
-                <Button variant="default" size="icon" asChild title="Open in new tab">
+                <Button 
+                  size="icon" 
+                  asChild 
+                  className="h-10 w-10 shrink-0 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground"
+                  title="Open checkout"
+                >
                   <a href={createdUrl} target="_blank" rel="noopener noreferrer">
                     <ExternalLink className="h-4 w-4" />
                   </a>
                 </Button>
               </div>
             </div>
+
             <DialogFooter>
-              <Button onClick={() => handleOpenChange(false)} className="w-full">Done</Button>
+              <Button 
+                onClick={() => handleOpenChange(false)} 
+                className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+              >
+                Done
+              </Button>
             </DialogFooter>
           </div>
         ) : (
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (₹)</FormLabel>
+                      <FormLabel className="text-xs font-semibold">Amount (₹)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.01" min="1" placeholder="0.00" disabled={createMutation.isPending} {...field} />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">₹</span>
+                          <Input 
+                            type="number" 
+                            step="0.01" 
+                            min="1" 
+                            placeholder="0.00" 
+                            disabled={createMutation.isPending} 
+                            className="pl-7 h-10 rounded-xl bg-background font-bold tabular-nums" 
+                            {...field} 
+                          />
+                        </div>
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[11px]" />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="orderId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Order ID</FormLabel>
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="text-xs font-semibold">Order ID</FormLabel>
+                        <button
+                          type="button"
+                          onClick={() => form.setValue("orderId", generateOrderId())}
+                          className="text-[10px] text-primary hover:underline font-bold"
+                        >
+                          Regen
+                        </button>
+                      </div>
                       <FormControl>
-                        <Input placeholder="ORD-12345" disabled={createMutation.isPending} {...field} />
+                        <Input 
+                          placeholder="ORD-12345" 
+                          disabled={createMutation.isPending} 
+                          className="h-10 rounded-xl font-mono text-xs bg-background" 
+                          {...field} 
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[11px]" />
                     </FormItem>
                   )}
                 />
@@ -188,21 +253,37 @@ export function CreatePaymentModal({ open, onOpenChange }: CreatePaymentModalPro
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel className="text-xs font-semibold">Note / Memo (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Payment for services" disabled={createMutation.isPending} {...field} />
+                      <Input 
+                        placeholder="e.g. Website development milestone 1" 
+                        disabled={createMutation.isPending} 
+                        className="h-10 rounded-xl bg-background text-xs" 
+                        {...field} 
+                      />
                     </FormControl>
-                    <FormMessage />
+                    <FormMessage className="text-[11px]" />
                   </FormItem>
                 )}
               />
-              <DialogFooter className="pt-4 border-t border-border">
-                <Button type="button" variant="outline" onClick={() => handleOpenChange(false)} disabled={createMutation.isPending}>
+
+              <DialogFooter className="pt-4 border-t border-border gap-2 sm:gap-0">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => handleOpenChange(false)} 
+                  disabled={createMutation.isPending}
+                  className="rounded-xl h-10 text-xs font-bold"
+                >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Generate Link
+                <Button 
+                  type="submit" 
+                  disabled={createMutation.isPending}
+                  className="rounded-xl h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 shadow-md shadow-primary/20"
+                >
+                  {createMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  <span>Generate Payment URL</span>
                 </Button>
               </DialogFooter>
             </form>

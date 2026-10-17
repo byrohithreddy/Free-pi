@@ -19,11 +19,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Loader2, Save, User, Shield, Building } from "lucide-react";
+import { Loader2, Save, User, Shield, Building, Lock, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 const profileSchema = z.object({
-  businessName: z.string().min(2, { message: "Business name is required" }),
-  upiId: z.string().regex(/^[\w.-]+@[\w.-]+$/, { message: "Invalid UPI ID format" }),
+  businessName: z.string().min(2, { message: "Business name must be at least 2 characters" }),
+  upiId: z.string().regex(/^[\w.-]+@[\w.-]+$/, { message: "Invalid UPI ID format (e.g. name@bank)" }),
   phone: z.string().optional(),
 });
 
@@ -66,7 +67,7 @@ export default function Settings() {
           queryClient.setQueryData(getGetCurrentMerchantQueryKey(), updatedMerchant);
           toast({
             title: "Profile Updated",
-            description: "Your business profile has been updated.",
+            description: "Your merchant business credentials have been saved.",
           });
         },
         onError: (err: any) => {
@@ -93,7 +94,7 @@ export default function Settings() {
         },
         onError: (err: any) => {
           toast({
-            title: "Update Failed",
+            title: "Security Update Failed",
             description: err?.message || "Could not change password.",
             variant: "destructive",
           });
@@ -106,90 +107,139 @@ export default function Settings() {
 
   return (
     <AppLayout>
-      <div className="flex-1 space-y-6 p-8 pt-6 max-w-4xl mx-auto w-full">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight text-foreground">Settings</h2>
-          <p className="text-muted-foreground mt-1">Manage your account settings and preferences.</p>
+      <div className="workspace-page settings-page flex-1 space-y-6 sm:space-y-8 p-4 sm:p-8 max-w-4xl mx-auto w-full">
+        {/* Header */}
+        <div className="workspace-page-header pb-2 border-b border-border/60">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="page-kicker text-[11px] font-bold uppercase tracking-wider text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+              Account
+            </span>
+            <span className="text-xs text-muted-foreground">• Profile and security</span>
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Business and account settings
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Update the business details customers see and manage your account security.
+          </p>
         </div>
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="bg-muted/50 border border-border/50">
-            <TabsTrigger value="profile" className="flex gap-2 font-medium">
-              <Building className="h-4 w-4" /> Profile & UPI
+          <TabsList className="bg-card border border-border p-1 rounded-2xl h-11 w-full sm:w-auto inline-flex">
+            <TabsTrigger 
+              value="profile" 
+              className="rounded-xl px-4 text-xs font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+            >
+              <Building className="h-4 w-4" />
+              <span>Business profile</span>
             </TabsTrigger>
-            <TabsTrigger value="security" className="flex gap-2 font-medium">
-              <Shield className="h-4 w-4" /> Security
+            <TabsTrigger 
+              value="security" 
+              className="rounded-xl px-4 text-xs font-bold gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all"
+            >
+              <Shield className="h-4 w-4" />
+              <span>Password and security</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile">
-            <Card className="border-border shadow-sm">
-              <CardHeader>
-                <CardTitle>Business Profile</CardTitle>
-                <CardDescription>
-                  Update your business details and the UPI ID where you receive funds.
+          <TabsContent value="profile" className="space-y-4">
+            <Card className="glass-card rounded-2xl overflow-hidden shadow-sm">
+              <CardHeader className="p-5 sm:p-6 pb-3 border-b border-border/60">
+                <CardTitle className="text-base font-bold text-foreground">Business Details</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  This business name and UPI ID will be rendered on all customer payment screens.
                 </CardDescription>
               </CardHeader>
+              
               <Form {...profileForm}>
                 <form onSubmit={profileForm.handleSubmit(onProfileSubmit)}>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-5 sm:p-6">
                     <FormField
                       control={profileForm.control}
                       name="businessName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Business Name</FormLabel>
+                          <FormLabel className="text-xs font-semibold">Business Name</FormLabel>
                           <FormControl>
-                            <Input {...field} disabled={updateMutation.isPending} className="bg-muted/30" />
+                            <Input 
+                              {...field} 
+                              disabled={updateMutation.isPending} 
+                              className="h-10 rounded-xl bg-muted/40 font-semibold" 
+                            />
                           </FormControl>
-                          <FormDescription>
-                            This name is displayed to customers on the payment page.
+                          <FormDescription className="text-[11px]">
+                            Brand name shown to payers during UPI intent checkout.
                           </FormDescription>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={profileForm.control}
                       name="upiId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>UPI ID (VPA)</FormLabel>
+                          <FormLabel className="text-xs font-semibold">Recipient UPI ID (VPA)</FormLabel>
                           <FormControl>
-                            <Input {...field} disabled={updateMutation.isPending} className="font-mono bg-muted/30" />
+                            <Input 
+                              {...field} 
+                              disabled={updateMutation.isPending} 
+                              className="h-10 rounded-xl font-mono text-xs bg-muted/40 font-semibold text-primary" 
+                            />
                           </FormControl>
-                          <FormDescription>
-                            The UPI ID where all generated payment links will route funds.
+                          <FormDescription className="text-[11px]">
+                            Destination virtual payment address for all inbound UPI transactions.
                           </FormDescription>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={profileForm.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input {...field} readOnly disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
-                          </FormControl>
-                          <FormDescription>
-                            Your registered contact number (cannot be changed).
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="pt-4 space-y-1">
-                      <label className="text-sm font-medium text-muted-foreground">Account Email</label>
-                      <Input value={merchant.email} readOnly disabled className="bg-muted text-muted-foreground cursor-not-allowed" />
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                      <FormField
+                        control={profileForm.control}
+                        name="phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs font-semibold">Registered Phone</FormLabel>
+                            <FormControl>
+                              <Input 
+                                {...field} 
+                                readOnly 
+                                disabled 
+                                className="h-10 rounded-xl bg-muted/60 text-muted-foreground cursor-not-allowed font-mono text-xs" 
+                              />
+                            </FormControl>
+                            <FormDescription className="text-[10px]">
+                              Verified during account creation.
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-muted-foreground">Account Email</label>
+                        <Input 
+                          value={merchant.email} 
+                          readOnly 
+                          disabled 
+                          className="h-10 rounded-xl bg-muted/60 text-muted-foreground cursor-not-allowed font-mono text-xs" 
+                        />
+                        <p className="text-[10px] text-muted-foreground">Login credential.</p>
+                      </div>
                     </div>
                   </CardContent>
-                  <CardFooter className="border-t border-border/50 bg-card pt-6">
-                    <Button type="submit" disabled={updateMutation.isPending} className="ml-auto">
-                      {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                      Save Changes
+
+                  <CardFooter className="border-t border-border/60 bg-muted/20 p-4 sm:p-5 flex justify-end">
+                    <Button 
+                      type="submit" 
+                      disabled={updateMutation.isPending} 
+                      className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 shadow-md shadow-primary/20"
+                    >
+                      {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      <span>Save Changes</span>
                     </Button>
                   </CardFooter>
                 </form>
@@ -197,48 +247,67 @@ export default function Settings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="security">
-            <Card className="border-border shadow-sm">
-              <CardHeader>
-                <CardTitle>Change Password</CardTitle>
-                <CardDescription>
-                  Ensure your account is using a long, random password to stay secure.
+          <TabsContent value="security" className="space-y-4">
+            <Card className="glass-card rounded-2xl overflow-hidden shadow-sm">
+              <CardHeader className="p-5 sm:p-6 pb-3 border-b border-border/60">
+                <CardTitle className="text-base font-bold text-foreground">Password & Auth</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Rotate your dashboard access password regularly to protect your account.
                 </CardDescription>
               </CardHeader>
+
               <Form {...securityForm}>
                 <form onSubmit={securityForm.handleSubmit(onSecuritySubmit)}>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-4 p-5 sm:p-6">
                     <FormField
                       control={securityForm.control}
                       name="currentPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Current Password</FormLabel>
+                          <FormLabel className="text-xs font-semibold">Current Password</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} disabled={updateMutation.isPending} className="bg-muted/30" />
+                            <Input 
+                              type="password" 
+                              placeholder="••••••••••••"
+                              {...field} 
+                              disabled={updateMutation.isPending} 
+                              className="h-10 rounded-xl bg-muted/40 font-mono" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
+
                     <FormField
                       control={securityForm.control}
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password</FormLabel>
+                          <FormLabel className="text-xs font-semibold">New Password (Min 8 Characters)</FormLabel>
                           <FormControl>
-                            <Input type="password" {...field} disabled={updateMutation.isPending} className="bg-muted/30" />
+                            <Input 
+                              type="password" 
+                              placeholder="••••••••••••"
+                              {...field} 
+                              disabled={updateMutation.isPending} 
+                              className="h-10 rounded-xl bg-muted/40 font-mono" 
+                            />
                           </FormControl>
-                          <FormMessage />
+                          <FormMessage className="text-[11px]" />
                         </FormItem>
                       )}
                     />
                   </CardContent>
-                  <CardFooter className="border-t border-border/50 bg-card pt-6">
-                    <Button type="submit" disabled={updateMutation.isPending} className="ml-auto bg-foreground text-background hover:bg-foreground/90">
-                      {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Shield className="mr-2 h-4 w-4" />}
-                      Update Password
+
+                  <CardFooter className="border-t border-border/60 bg-muted/20 p-4 sm:p-5 flex justify-end">
+                    <Button 
+                      type="submit" 
+                      disabled={updateMutation.isPending} 
+                      className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs gap-1.5 shadow-md shadow-primary/20"
+                    >
+                      {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
+                      <span>Update Password</span>
                     </Button>
                   </CardFooter>
                 </form>

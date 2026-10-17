@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { Link } from "wouter";
-import { useGetMerchantStats, getGetMerchantStatsQueryKey, useListPayments, getListPaymentsQueryKey, useConfirmPaymentByUtr } from "@workspace/api-client-react";
+import { useGetMerchantStats, getGetMerchantStatsQueryKey, useConfirmPaymentByUtr } from "@workspace/api-client-react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,11 +24,14 @@ import {
   XCircle,
   MoreHorizontal,
   ChevronRight,
-  ChevronLeft,
-  Calendar as CalendarIcon,
-  Smile,
   Zap,
-  Search
+  Search,
+  Copy,
+  Check,
+  RefreshCw,
+  ShieldCheck,
+  Flame,
+  ArrowRight
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { 
@@ -61,18 +64,21 @@ export default function Dashboard() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedTxId, setSelectedTxId] = useState<string | null>(null);
   const [quickUtr, setQuickUtr] = useState("");
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   const confirmByUtrMutation = useConfirmPaymentByUtr();
 
-  const handleQuickConfirm = () => {
-    if (!quickUtr) return;
+  const handleQuickConfirm = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!quickUtr.trim()) return;
+    
     confirmByUtrMutation.mutate({
-      data: { utrNumber: quickUtr }
+      data: { utrNumber: quickUtr.trim() }
     }, {
       onSuccess: (data) => {
         toast({
           title: "Payment Confirmed",
-          description: data.message,
+          description: data.message || "UTR verified and payment settled.",
         });
         setQuickUtr("");
         queryClient.invalidateQueries({ queryKey: getGetMerchantStatsQueryKey() });
@@ -87,7 +93,19 @@ export default function Dashboard() {
     });
   };
 
-  const { data: stats, isLoading: statsLoading } = useGetMerchantStats({
+  const copyUpiId = () => {
+    if (merchant?.upiId) {
+      navigator.clipboard.writeText(merchant.upiId);
+      setCopiedUpi(true);
+      setTimeout(() => setCopiedUpi(false), 2000);
+      toast({
+        title: "Copied UPI ID",
+        description: merchant.upiId,
+      });
+    }
+  };
+
+  const { data: stats, isLoading: statsLoading, isFetching } = useGetMerchantStats({
     query: {
       queryKey: getGetMerchantStatsQueryKey(),
       refetchInterval: 10000,
@@ -97,8 +115,7 @@ export default function Dashboard() {
   const transactions = stats?.recentTransactions || [];
 
   const chartData = useMemo(() => {
-    // Aggregate transactions by hour for the current day
-    const hours = Array.from({ length: 8 }).map((_, i) => i * 3); // 0, 3, 6, 9, 12, 15, 18, 21
+    const hours = [0, 3, 6, 9, 12, 15, 18, 21];
     return hours.map(h => {
       const hourTxs = transactions.filter(tx => new Date(tx.createdAt).getHours() === h);
       return {
@@ -110,349 +127,491 @@ export default function Dashboard() {
     });
   }, [transactions]);
 
-  const pieData = useMemo(() => [
-    { name: 'Pending', value: stats?.pendingCount || 0, color: '#F59E0B' },
-    { name: 'Confirmed', value: stats?.confirmedToday || 0, color: '#10B981' },
-    { name: 'Rejected', value: stats?.rejectedCount || 0, color: '#EF4444' },
-  ], [stats]);
-
   const totalTxs = stats?.totalTransactions || 0;
+  const pendingCount = stats?.pendingCount || 0;
+  const confirmedToday = stats?.confirmedToday || 0;
+  const rejectedCount = stats?.rejectedCount || 0;
+
+  const pieData = useMemo(() => {
+    const total = pendingCount + confirmedToday + rejectedCount;
+    if (total === 0) {
+      return [
+        { name: 'Confirmed', value: 1, color: '#10B981' },
+      ];
+    }
+    return [
+      { name: 'Confirmed', value: confirmedToday, color: '#10B981' },
+      { name: 'Pending', value: pendingCount, color: '#F59E0B' },
+      { name: 'Rejected', value: rejectedCount, color: '#EF4444' },
+    ];
+  }, [pendingCount, confirmedToday, rejectedCount]);
 
   const avgProcessingTime = useMemo(() => {
     const confirmed = transactions.filter(t => t.status === 'CONFIRMED' && t.confirmedAt);
-    if (confirmed.length === 0) return 0;
+    if (confirmed.length === 0) return 1;
     const totalMs = confirmed.reduce((acc, t) => {
       return acc + (new Date(t.confirmedAt!).getTime() - new Date(t.createdAt).getTime());
     }, 0);
-    return Math.round(totalMs / confirmed.length / 60000); // in minutes
+    return Math.max(1, Math.round(totalMs / confirmed.length / 60000));
   }, [transactions]);
 
   return (
     <AppLayout>
-      <div className="flex-1 space-y-8 p-8 pt-10 max-w-7xl mx-auto">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground/60 uppercase tracking-widest">
-          <span>Free Pi</span>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-foreground">Dashboard</span>
-        </div>
-
-        {/* Welcome Header */}
-        <div className="flex items-end justify-between">
-          <div className="space-y-1">
-            <h1 className="text-4xl font-black tracking-tight text-foreground">
-              Welcome Back,
-            </h1>
-            <p className="text-2xl font-bold text-muted-foreground">
-              {merchant?.businessName || "Valued Merchant"}
-            </p>
+      <div className="workspace-page dashboard-page flex-1 space-y-6 sm:space-y-8 p-4 sm:p-8 max-w-7xl mx-auto">
+        {/* Header HUD */}
+        <div className="workspace-page-header flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-border/60">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="page-kicker text-[11px] font-bold uppercase tracking-wider text-primary px-2 py-0.5 rounded-full bg-primary/10 border border-primary/20">
+                Payment overview
+              </span>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <span className="text-[11px] font-medium">Refreshes every 10 seconds</span>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap items-baseline gap-3">
+              <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground text-balance">
+                {merchant?.businessName || "Merchant Dashboard"}
+              </h1>
+              {merchant?.upiId && (
+                <button
+                  type="button"
+                  onClick={copyUpiId}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 hover:bg-muted text-xs font-mono font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer border border-border/80"
+                  title="Click to copy UPI ID"
+                >
+                  <span>{merchant.upiId}</span>
+                  {copiedUpi ? <Check className="h-3 w-3 text-emerald-500" /> : <Copy className="h-3 w-3" />}
+                </button>
+              )}
+            </div>
           </div>
-          <Button 
-            onClick={() => setCreateModalOpen(true)} 
-            className="bg-primary hover:bg-primary/90 text-white font-bold rounded-2xl px-6 h-14 shadow-lg shadow-primary/20 transition-all hover:scale-105 active:scale-95"
-          >
-            <Plus className="mr-2 h-5 w-5" />
-            Create Payment
-          </Button>
+
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => queryClient.invalidateQueries({ queryKey: getGetMerchantStatsQueryKey() })}
+              className="h-10 px-3 rounded-xl gap-2 text-xs font-semibold"
+              disabled={isFetching}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin text-primary' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
+            <Button 
+              onClick={() => setCreateModalOpen(true)} 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl px-5 h-10 shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-[0.98] gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create Payment</span>
+            </Button>
+          </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <Card className="bg-sidebar text-sidebar-foreground border-none shadow-2xl relative overflow-hidden h-40 flex flex-col justify-between p-6 rounded-[2rem]">
-              <div className="flex justify-between items-start relative z-10">
-                <p className="text-xs font-bold uppercase tracking-widest text-white/50">Total Collected</p>
-                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center border border-white/10">
-                  <IndianRupee className="h-5 w-5 text-primary" />
+        {/* 4 Stats Cards */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Total Collections Card */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <Card className="glass-card glass-card-hover p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between h-36">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">Total collected</span>
+                <div className="h-9 w-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                  <IndianRupee className="h-4.5 w-4.5" />
                 </div>
               </div>
-              <div className="relative z-10">
-                <h3 className="text-3xl font-black">{statsLoading ? "..." : formatRupees(stats?.totalCollected || 0)}</h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <div className={`h-1.5 w-1.5 rounded-full ${stats?.collectionGrowth >= 0 ? 'bg-primary' : 'bg-red-500'}`} />
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">
-                    {stats?.collectionGrowth > 0 ? '+' : ''}{stats?.collectionGrowth ? stats.collectionGrowth.toFixed(1) : '0'}% vs last month
-                  </p>
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                  {statsLoading ? <Skeleton className="h-8 w-28" /> : formatRupees(stats?.totalCollected || 0)}
+                </h3>
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-emerald-500">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>
+                    {stats?.collectionGrowth ? `${stats.collectionGrowth > 0 ? '+' : ''}${stats.collectionGrowth.toFixed(1)}%` : 'Active'} vs last period
+                  </span>
                 </div>
               </div>
-              <div className="absolute -right-8 -bottom-8 h-40 w-40 bg-primary/10 blur-3xl rounded-full" />
+              <div className="absolute -right-6 -bottom-6 h-24 w-24 bg-primary/10 blur-2xl rounded-full pointer-events-none" />
             </Card>
           </motion.div>
 
-          {[
-            { title: "Active Requests", value: stats?.pendingCount || 0, icon: Clock, color: "text-amber-500", bg: "bg-amber-500/10", subtitle: "Pending confirmation" },
-            { title: "Confirmed Today", value: stats?.confirmedToday || 0, icon: CheckCircle2, color: "text-green-500", bg: "bg-green-500/10", subtitle: "Success rate 100%" },
-            { title: "Failed/Rejected", value: stats?.rejectedCount || 0, icon: XCircle, color: "text-red-500", bg: "bg-red-500/10", subtitle: "Total failed" }
-          ].map((stat, i) => (
-            <motion.div key={i} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 + i * 0.1 }}>
-              <Card className="bg-card border-none shadow-sm h-40 flex flex-col justify-between p-6 rounded-[2rem] hover:shadow-xl transition-all duration-500 group">
-                <div className="flex justify-between items-start">
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{stat.title}</p>
-                  <div className={`h-10 w-10 rounded-full ${stat.bg} flex items-center justify-center transition-transform group-hover:scale-110`}>
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
+          {/* Pending Requests */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="glass-card glass-card-hover p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between h-36">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">Pending verifications</span>
+                <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                  <Clock className="h-4.5 w-4.5" />
                 </div>
-                <div>
-                  <h3 className="text-3xl font-black text-foreground">
-                    {statsLoading ? (
-                      <Skeleton className="h-9 w-20 bg-muted" />
-                    ) : (
-                      stat.value
-                    )}
-                  </h3>
-                  <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-tighter mt-1">{stat.subtitle}</p>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Top Section: Insights, Quick Confirm and Recent Transactions */}
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-4 space-y-6 flex flex-col">
-            <Card className="bg-card border-none shadow-sm rounded-[2.5rem] p-8 flex flex-col justify-between flex-1">
+              </div>
               <div>
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-black text-foreground">Payment Insights</h3>
-                  <Smile className="h-5 w-5 text-primary" />
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Your payment orchestration is performing well. <span className="text-foreground font-bold">{stats?.successRate || 0}% confirmation rate</span> with average processing time of <span className="text-foreground font-bold">{avgProcessingTime} minutes</span>. Continue monitoring pending transactions for optimal merchant experience.
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : pendingCount}
+                </h3>
+                <p className="text-[11px] font-semibold text-amber-500/90 mt-1 flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                  Awaiting customer UTR proof
                 </p>
               </div>
-              <div className="mt-8 p-6 bg-sidebar rounded-3xl text-white relative overflow-hidden group cursor-pointer">
-                <div className="relative z-10">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Action Plan</p>
-                  <h4 className="text-sm font-bold mt-2">Improve Success Rate</h4>
-                  <p className="text-xs text-white/50 mt-1">Focus on reducing timeout rejects</p>
-                  <p className="text-xs text-white/50 mt-1">Reduce the processing time</p>
-                </div>
-                <div className="absolute -right-4 -bottom-4 h-24 w-24 bg-primary/20 blur-3xl rounded-full transition-transform group-hover:scale-150" />
-              </div>
             </Card>
+          </motion.div>
 
-            <Card className="bg-sidebar text-white border-none shadow-2xl rounded-[2.5rem] p-8 relative overflow-hidden">
-              <div className="relative z-10">
-                <div className="flex items-center gap-3 mb-6">
-                  <Zap className="h-5 w-5 text-primary fill-primary" />
-                  <h3 className="text-lg font-black">Quick Confirm</h3>
-                </div>
-                <p className="text-xs text-white/60 mb-6 font-bold uppercase tracking-wider">Confirm by UTR Matching</p>
-                
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
-                    <Input 
-                      placeholder="Enter UTR Number" 
-                      value={quickUtr}
-                      onChange={(e) => setQuickUtr(e.target.value)}
-                      className="bg-white/10 border-white/10 text-white placeholder:text-white/20 pl-11 h-12 rounded-2xl focus-visible:ring-primary/50"
-                    />
-                  </div>
-                  <Button 
-                    onClick={handleQuickConfirm}
-                    disabled={!quickUtr || confirmByUtrMutation.isPending}
-                    className="w-full bg-primary hover:bg-primary/90 text-white font-black rounded-2xl h-12 shadow-lg shadow-primary/20"
-                  >
-                    {confirmByUtrMutation.isPending ? "Confirming..." : "Auto Match & Confirm"}
-                  </Button>
+          {/* Confirmed Today */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+            <Card className="glass-card glass-card-hover p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between h-36">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">Confirmed today</span>
+                <div className="h-9 w-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+                  <CheckCircle2 className="h-4.5 w-4.5" />
                 </div>
               </div>
-              <div className="absolute -left-12 -bottom-12 h-40 w-40 bg-primary/10 blur-3xl rounded-full" />
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : confirmedToday}
+                </h3>
+                <p className="text-[11px] font-semibold text-emerald-500 mt-1">
+                  {stats?.successRate || 0}% overall confirmation rate
+                </p>
+              </div>
             </Card>
-          </div>
+          </motion.div>
 
-          <Card className="lg:col-span-8 bg-card border-none shadow-sm rounded-[2.5rem] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-lg font-black text-foreground">Recent Transactions</h3>
-            </div>
-
-            <div className="space-y-4">
-              {statsLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl">
-                    <div className="flex items-center gap-4">
-                      <Skeleton className="h-12 w-12 rounded-full bg-muted" />
-                      <div className="space-y-2">
-                        <Skeleton className="h-4 w-24 bg-muted" />
-                        <Skeleton className="h-3 w-16 bg-muted" />
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-right">
-                      <Skeleton className="h-4 w-12 bg-muted" />
-                      <Skeleton className="h-3 w-16 bg-muted ml-auto" />
-                    </div>
-                  </div>
-                ))
-              ) : transactions.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <div className="h-12 w-12 rounded-full bg-muted/30 flex items-center justify-center mb-4">
-                    <Activity className="h-6 w-6 text-muted-foreground/30" />
-                  </div>
-                  <p className="text-sm font-bold text-muted-foreground">No recent transactions</p>
-                  <p className="text-[10px] text-muted-foreground/50 uppercase tracking-widest mt-1">Create your first payment to see activity</p>
+          {/* Rejections / Failures */}
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Card className="glass-card glass-card-hover p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between h-36">
+              <div className="flex justify-between items-start">
+                <span className="text-xs font-semibold tracking-wide text-muted-foreground">Rejected / expired</span>
+                <div className="h-9 w-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500">
+                  <XCircle className="h-4.5 w-4.5" />
                 </div>
-              ) : (
-                transactions.slice(0, 6).map((tx, i) => (
-                  <div key={tx.id} onClick={() => setSelectedTxId(tx.transactionId)} className="flex items-center justify-between p-4 rounded-2xl hover:bg-muted/30 transition-all cursor-pointer group">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12 border-2 border-primary/10">
-                        <AvatarImage src={`https://avatar.vercel.sh/${tx.customerName || tx.id}`} />
-                        <AvatarFallback>{(tx.customerName || "C")[0]}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="text-sm font-black text-foreground truncate max-w-[120px]">{tx.customerName || "Anonymous Customer"}</p>
-                        <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5">TXN_{tx.id.substring(0, 8)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-black text-foreground">{formatRupees(tx.amount)}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-muted-foreground/40">{format(new Date(tx.createdAt), 'h:mm a')}</span>
-                        <Badge className={`
-                          text-[8px] font-black uppercase tracking-widest px-2 py-0 border-none
-                          ${tx.status === 'CONFIRMED' ? 'bg-green-500/10 text-green-500' : 
-                            tx.status === 'PENDING' ? 'bg-amber-500/10 text-amber-500' : 
-                            'bg-red-500/10 text-red-500'}
-                        `}>
-                          {tx.status}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <Button variant="ghost" asChild className="w-full mt-4 text-xs font-bold text-primary hover:text-primary/80 group">
-              <Link to="/transactions" className="flex items-center justify-center w-full">
-                View All Transactions
-                <ChevronRight className="ml-1 h-3 w-3 transition-transform group-hover:translate-x-1" />
-              </Link>
-            </Button>
-          </Card>
+              </div>
+              <div>
+                <h3 className="text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums tracking-tight">
+                  {statsLoading ? <Skeleton className="h-8 w-16" /> : rejectedCount}
+                </h3>
+                <p className="text-[11px] font-medium text-muted-foreground mt-1">
+                  Avg match time: {avgProcessingTime} min
+                </p>
+              </div>
+            </Card>
+          </motion.div>
         </div>
 
-        {/* Bottom Section: Analytics and Flow Overview */}
-        <div className="grid gap-6 lg:grid-cols-12">
-          <Card className="lg:col-span-7 bg-card border-none shadow-sm rounded-[2.5rem] p-8">
-            <div className="flex items-center justify-between mb-8">
-              <div className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <h3 className="text-lg font-black text-foreground">Analytic View</h3>
+        {/* Instant UTR Power Bar */}
+        <Card className="border border-primary/20 bg-gradient-to-r from-card via-card to-primary/5 p-4 sm:p-5 rounded-2xl relative overflow-hidden shadow-sm">
+          <form onSubmit={handleQuickConfirm} className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                <Zap className="h-5 w-5 fill-primary/30" />
               </div>
-              <div className="flex items-center gap-2 bg-muted/30 px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground">
-                <CalendarIcon className="h-3.5 w-3.5" />
-                <span>March 2026</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col md:flex-row items-center gap-12">
-              <div className="relative h-48 w-48 flex items-center justify-center shrink-0">
-                <div className="absolute inset-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="text-center">
-                  <span className="text-4xl font-black text-foreground">{totalTxs > 0 ? "100%" : "0%"}</span>
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Status</p>
-                </div>
-              </div>
-
-              <div className="flex-1 space-y-6 w-full">
-                <div className="flex justify-between items-end border-b border-border/50 pb-2">
-                  <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Total transactions</p>
-                  <p className="text-2xl font-black">{totalTxs}</p>
-                </div>
-                <div className="space-y-4">
-                  {pieData.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between group cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="text-sm font-bold text-foreground/70 group-hover:text-foreground transition-colors">{item.name}</span>
-                      </div>
-                      <span className="text-sm font-black text-foreground">{item.value}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="lg:col-span-5 bg-card border-none shadow-sm rounded-[2.5rem] p-8">
-            <div className="flex items-center justify-between mb-8">
               <div>
-                <h3 className="text-lg font-black text-foreground">Payment Flow</h3>
-                <p className="text-xs text-muted-foreground mt-1 font-bold uppercase tracking-widest">Live Activity</p>
+                <h4 className="text-sm font-bold text-foreground">Instant UTR Verification</h4>
+                <p className="text-xs text-muted-foreground">Input the 12-digit bank reference number to match and confirm instantly.</p>
               </div>
             </div>
 
-            <div className="h-[250px] w-full">
+            <div className="flex items-center gap-2 sm:max-w-md w-full">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="e.g. 408512345678"
+                  value={quickUtr}
+                  onChange={(e) => setQuickUtr(e.target.value)}
+                  className="pl-9 h-10 rounded-xl bg-background/80 border-border text-sm font-mono focus-visible:ring-primary"
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={!quickUtr.trim() || confirmByUtrMutation.isPending}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-10 px-4 text-xs shrink-0"
+              >
+                {confirmByUtrMutation.isPending ? "Matching..." : "Match & Verify"}
+              </Button>
+            </div>
+          </form>
+        </Card>
+
+        {/* Charts Grid */}
+        <div className="grid gap-6 lg:grid-cols-12">
+          {/* Left Chart: Hourly Activity */}
+          <Card className="lg:col-span-7 glass-card p-5 sm:p-6 rounded-2xl flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-primary" />
+                  <span>Payment Velocity & Settlement</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Real-time payment requests mapped across the day</p>
+              </div>
+              <div className="flex items-center gap-3 text-xs font-semibold">
+                <div className="flex items-center gap-1.5 text-emerald-500">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span>Confirmed</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-amber-500">
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span>Pending</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="colorConfirmed" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
+                    <linearGradient id="confirmedGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.35}/>
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
                     </linearGradient>
-                    <linearGradient id="colorPending" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.3}/>
+                    <linearGradient id="pendingGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.35}/>
                       <stop offset="95%" stopColor="#F59E0B" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border) / 0.6)" />
                   <XAxis 
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
-                    dy={10}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    dy={5}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fontSize: 10, fontWeight: 700, fill: '#9CA3AF' }}
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   />
                   <Tooltip 
-                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))', 
+                      borderColor: 'hsl(var(--border))', 
+                      borderRadius: '0.75rem', 
+                      fontSize: '12px',
+                      color: 'hsl(var(--foreground))',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.2)'
+                    }} 
                   />
                   <Area 
                     type="monotone" 
                     dataKey="confirmed" 
-                    stroke="#D4AF37" 
-                    strokeWidth={4}
+                    name="Confirmed"
+                    stroke="#10B981" 
+                    strokeWidth={2.5}
                     fillOpacity={1} 
-                    fill="url(#colorConfirmed)" 
+                    fill="url(#confirmedGradient)" 
                   />
                   <Area 
                     type="monotone" 
                     dataKey="pending" 
+                    name="Pending"
                     stroke="#F59E0B" 
-                    strokeWidth={4}
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
                     fillOpacity={1} 
-                    fill="url(#colorPending)" 
+                    fill="url(#pendingGradient)" 
                   />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </Card>
+
+          {/* Right Chart: Status Ratio Donut */}
+          <Card className="lg:col-span-5 glass-card p-5 sm:p-6 rounded-2xl flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <h3 className="text-base font-bold text-foreground">Status Breakdown</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Distribution across all requests</p>
+              </div>
+              <Badge variant="outline" className="text-xs font-mono">
+                {totalTxs} total
+              </Badge>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
+              <div className="relative h-44 w-44 flex items-center justify-center shrink-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={55}
+                      outerRadius={72}
+                      paddingAngle={4}
+                      dataKey="value"
+                      stroke="none"
+                    >
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-black text-foreground tabular-nums">
+                    {stats?.successRate || 0}%
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Success
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 space-y-2.5 w-full">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    <span className="font-semibold text-foreground">Confirmed</span>
+                  </div>
+                  <span className="font-bold tabular-nums text-emerald-500">{confirmedToday}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                    <span className="font-semibold text-foreground">Pending UTR</span>
+                  </div>
+                  <span className="font-bold tabular-nums text-amber-500">{pendingCount}</span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-rose-500" />
+                    <span className="font-semibold text-foreground">Rejected</span>
+                  </div>
+                  <span className="font-bold tabular-nums text-rose-500">{rejectedCount}</span>
+                </div>
+              </div>
+            </div>
+
+            <Button asChild variant="outline" size="sm" className="w-full text-xs font-semibold mt-2">
+              <Link href="/analytics" className="flex items-center justify-center gap-1.5">
+                <span>Open Deep Analytics</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </Card>
         </div>
+
+        {/* Live Recent Transactions Feed */}
+        <Card className="glass-card p-5 sm:p-6 rounded-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                <span>Recent Transactions</span>
+                <Badge variant="outline" className="text-[10px] font-mono text-primary border-primary/30">
+                  Live Feed
+                </Badge>
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Click any transaction to inspect, confirm, or verify bank reference</p>
+            </div>
+
+            <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-semibold gap-1.5">
+              <Link href="/transactions">
+                <span>View Full History</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
+
+          <div className="divide-y divide-border/60">
+            {statsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-3.5">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-10 w-10 rounded-xl" />
+                    <div className="space-y-1.5">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-3 w-20" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              ))
+            ) : transactions.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="h-12 w-12 rounded-2xl bg-muted/50 flex items-center justify-center text-muted-foreground mb-3">
+                  <Activity className="h-6 w-6" />
+                </div>
+                <h4 className="text-sm font-bold text-foreground">No Payment Requests Yet</h4>
+                <p className="text-xs text-muted-foreground max-w-sm mt-1">
+                  Create your first payment request to generate a UPI intent link and track real-time settlements.
+                </p>
+                <Button 
+                  onClick={() => setCreateModalOpen(true)}
+                  size="sm"
+                  className="mt-4 bg-primary text-primary-foreground font-bold rounded-xl text-xs"
+                >
+                  Create First Payment
+                </Button>
+              </div>
+            ) : (
+              transactions.slice(0, 6).map((tx) => (
+                <div
+                  key={tx.id}
+                  onClick={() => setSelectedTxId(tx.transactionId)}
+                  className="flex items-center justify-between py-3.5 px-2 rounded-xl hover:bg-muted/40 transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Avatar className="h-10 w-10 rounded-xl border border-border">
+                      <AvatarImage src={`https://avatar.vercel.sh/${tx.customerName || tx.id}`} />
+                      <AvatarFallback className="rounded-xl font-bold text-xs bg-muted text-muted-foreground">
+                        {(tx.customerName || "C")[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                          {tx.customerName || "Customer Payment"}
+                        </p>
+                        <span className="text-[11px] font-mono text-muted-foreground/80 hidden sm:inline">
+                          #{tx.orderId || tx.id.slice(0, 8)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                        <span>{format(new Date(tx.createdAt), 'MMM d, h:mm a')}</span>
+                        {tx.utrNumber && (
+                          <span className="font-mono text-[10px] text-primary bg-primary/10 px-1.5 py-0.2 rounded border border-primary/20">
+                            UTR: {tx.utrNumber}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-right flex items-center gap-3">
+                    <div>
+                      <p className="text-sm font-black text-foreground tabular-nums">
+                        {formatRupees(tx.amount)}
+                      </p>
+                      <Badge 
+                        variant="outline"
+                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 border ${
+                          tx.status === 'CONFIRMED' 
+                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' 
+                            : tx.status === 'PENDING'
+                            ? 'bg-amber-500/10 text-amber-500 border-amber-500/30'
+                            : 'bg-rose-500/10 text-rose-500 border-rose-500/30'
+                        }`}
+                      >
+                        {tx.status}
+                      </Badge>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground opacity-50 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
       </div>
-      
+
       <CreatePaymentModal open={createModalOpen} onOpenChange={setCreateModalOpen} />
       <TransactionDetailModal transactionId={selectedTxId} open={!!selectedTxId} onOpenChange={(open) => !open && setSelectedTxId(null)} />
     </AppLayout>

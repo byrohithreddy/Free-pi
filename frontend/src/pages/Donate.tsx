@@ -1,30 +1,52 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link } from "wouter";
+import { 
+  ArrowLeft, 
+  Copy, 
+  Check, 
+  Heart, 
+  Sparkles, 
+  ExternalLink, 
+  Share2, 
+  Star,
+  Coffee,
+  Zap,
+  Rocket,
+  Crown,
+  Smartphone
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
-// Actual UPI ID to replace the placeholder
 const UPI_ID = "mushkerohithreddy@upi";
 
+const PRESET_TIERS = [
+  { amount: "49", label: "Chai & Fuel", icon: Coffee },
+  { amount: "99", label: "Server Host", icon: Zap },
+  { amount: "199", label: "Core Supporter", icon: Rocket },
+  { amount: "499", label: "Hero Sponsor", icon: Crown },
+];
+
 export default function Donate() {
-  const [amount, setAmount] = useState<string>("49");
+  const { toast } = useToast();
+  const [amount, setAmount] = useState<string>("99");
   const [customAmount, setCustomAmount] = useState<string>("");
   const [isCustom, setIsCustom] = useState<boolean>(false);
   const [qrUrl, setQrUrl] = useState<string>("");
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Debounce for custom amount
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout>;
-    
     const finalAmount = isCustom ? (customAmount || "0") : amount;
     
-    // Function to update QR
     const updateQR = () => {
-      const upiUrl = `upi://pay?pa=${UPI_ID}&pn=Rohith&am=${finalAmount}&cu=INR&tn=Portfolio+Support`;
-      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`);
+      const upiUrl = `upi://pay?pa=${UPI_ID}&pn=Rohith&am=${finalAmount}&cu=INR&tn=Free+Pi+Contribution`;
+      setQrUrl(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(upiUrl)}&margin=1`);
     };
 
     if (isCustom) {
-      timeoutId = setTimeout(updateQR, 400);
+      timeoutId = setTimeout(updateQR, 300);
     } else {
       updateQR();
     }
@@ -34,180 +56,245 @@ export default function Donate() {
     };
   }, [amount, customAmount, isCustom]);
 
-  const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(UPI_ID).then(() => {
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(UPI_ID);
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    });
-  }, []);
+      setTimeout(() => setCopied(false), 2000);
+      toast({ title: "UPI ID copied", description: UPI_ID });
+    } catch (error) {
+      toast({
+        title: "Couldn't copy the UPI ID",
+        description: error instanceof Error ? error.message : "Copy it manually from the screen.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
 
-  const handleShare = useCallback(() => {
-    window.location.href = "https://free-pi.pages.dev/";
-  }, []);
+  const handleShare = useCallback(async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Free Pi — Open-source UPI payments",
+          text: "Open-source UPI payment pages with no transaction fees.",
+          url: window.location.origin,
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        toast({
+          title: "Couldn't share Free Pi",
+          description: error instanceof Error ? error.message : "Please try again.",
+          variant: "destructive",
+        });
+      }
+      return;
+    }
 
-  const getUpiUrl = () => {
-    const finalAmount = isCustom ? (customAmount || "0") : amount;
-    return `upi://pay?pa=${UPI_ID}&pn=Rohith&am=${finalAmount}&cu=INR&tn=Portfolio+Support`;
-  };
+    try {
+      await navigator.clipboard.writeText(window.location.origin);
+      toast({ title: "Project link copied", description: window.location.origin });
+    } catch (error) {
+      toast({
+        title: "Couldn't copy the project link",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const currentDisplayAmount = isCustom ? (customAmount || "0") : amount;
+  const upiIntentUrl = `upi://pay?pa=${UPI_ID}&pn=Rohith&am=${currentDisplayAmount}&cu=INR&tn=Free+Pi+Contribution`;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0A1612] p-4 font-sans select-none text-white">
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes pulse-dot {
-          0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.4); }
-          70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
-          100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(212, 175, 55, 0); }
-        }
-        .pulse-dot {
-          animation: pulse-dot 2s infinite;
-        }
-        @keyframes breathing-glow {
-          0% { box-shadow: 0 0 12px rgba(212, 175, 55, 0.18), inset 0 0 12px rgba(212, 175, 55, 0.18); }
-          50% { box-shadow: 0 0 22px rgba(212, 175, 55, 0.45), inset 0 0 18px rgba(212, 175, 55, 0.35); }
-          100% { box-shadow: 0 0 12px rgba(212, 175, 55, 0.18), inset 0 0 12px rgba(212, 175, 55, 0.18); }
-        }
-        .breathing-glow-box {
-          animation: breathing-glow 3s ease-in-out infinite;
-        }
-      `}} />
+    <main className="donate-page min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-4 relative overflow-hidden font-sans">
+      {/* Ambient background glows */}
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-primary/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-[480px] bg-[#111d18] rounded-2xl shadow-[0_30px_80px_rgba(0,0,0,0.3)] border border-[rgba(255,255,255,0.08)] overflow-hidden relative">
-        <Link href="/" className="absolute top-4 left-4 text-slate-300 hover:text-white text-sm font-medium transition-colors">
-          ← Back
+      {/* Navigation Header */}
+      <div className="w-full max-w-lg mb-4 flex items-center justify-between z-10">
+        <Link 
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-full bg-card/60 border border-border backdrop-blur-sm"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          <span>Back to App</span>
         </Link>
-        <div className="h-1.5 w-full bg-[#D4AF37]" />
-        
-        <div className="p-6 sm:p-8 space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-3 pt-4">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1f2e26] border border-[rgba(212,175,55,0.18)] text-[#D4AF37] text-xs font-medium tracking-wide">
-              <span className="w-2 h-2 rounded-full bg-[#D4AF37] pulse-dot block" />
-              Open Source · Free Forever
-            </div>
-            <h1 className="text-2xl font-bold text-white">Support the Work</h1>
-            <p className="text-sm text-slate-300">Scan, pay, keep the project alive.</p>
-          </div>
 
-          {/* Amount Selection */}
-          <div className="flex flex-wrap justify-center gap-2">
-            {["49", "99", "199"].map((val) => (
-              <button
-                key={val}
-                onClick={() => { setIsCustom(false); setAmount(val); }}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${!isCustom && amount === val ? 'bg-[#D4AF37] text-[#0A1612] shadow-lg shadow-[#D4AF37]/30' : 'bg-[#15231f] text-slate-200 hover:bg-[#1f2e26] border border-transparent hover:border-[rgba(212,175,55,0.15)]'}`}
-              >
-                ₹{val}
-              </button>
-            ))}
-            <button
-              onClick={() => { setIsCustom(true); if(!customAmount) setCustomAmount("500"); }}
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${isCustom ? 'bg-[#D4AF37] text-[#0A1612] shadow-lg shadow-[#D4AF37]/30' : 'bg-[#15231f] text-slate-200 hover:bg-[#1f2e26] border border-transparent hover:border-[rgba(212,175,55,0.15)]'}`}
-            >
-              Custom
-            </button>
-          </div>
-
-          {/* Custom Amount Input */}
-          {isCustom && (
-            <div className="flex justify-center mt-2">
-              <div className="relative w-32">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300 font-medium">₹</span>
-                <input
-                  type="number"
-                  min="1"
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-[#15231f] border border-[#2c4435] rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                  placeholder="Amount"
-                  autoFocus
-                />
-              </div>
-            </div>
-          )}
-
-          {/* QR Code */}
-          <div className="flex flex-col items-center pt-2">
-            <div className="p-3 bg-[#0d1d16] rounded-xl breathing-glow-box border border-[rgba(212,175,55,0.12)]">
-              {qrUrl ? (
-                <img src={qrUrl} alt="Donate QR" className="w-48 h-48 rendering-pixelated rounded-lg" />
-              ) : (
-                <div className="w-48 h-48 bg-[#15231f] animate-pulse rounded-lg" />
-              )}
-            </div>
-            <p className="mt-4 text-xl font-bold text-white">
-              ₹{isCustom ? (customAmount || "0") : amount}
-            </p>
-          </div>
-
-          {/* UPI ID Row */}
-          <div className="flex items-center justify-between p-3 bg-[#12251e] rounded-xl border border-[rgba(255,255,255,0.08)]">
-            <span className="font-mono text-sm text-slate-300 truncate">{UPI_ID}</span>
-            <button
-              onClick={handleCopy}
-              className="text-xs font-semibold px-3 py-1.5 rounded-md bg-[#D4AF37] text-[#0A1612] hover:bg-[#b8972e] transition-colors"
-            >
-              {copied ? "Copied ✓" : "Copy"}
-            </button>
-          </div>
-
-          {/* Deep Links */}
-          <div className="space-y-3 pt-2 md:hidden">
-            <div className="flex items-center gap-3 text-xs text-slate-400">
-              <div className="flex-1 h-px bg-[rgba(255,255,255,0.12)]" />
-              <span>or pay via app</span>
-              <div className="flex-1 h-px bg-[rgba(255,255,255,0.12)]" />
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {[
-                { name: "GPay", color: "#4285F4", letter: "G" },
-                { name: "BHIM", color: "#FF7A00", letter: "B" },
-              ].map((app) => (
-                <a
-                  key={app.name}
-                  href={getUpiUrl()}
-                  className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-[#12251e] hover:bg-[#1f2e26] border border-[rgba(255,255,255,0.08)] transition-all active:scale-95"
-                >
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: app.color }}>
-                    {app.letter}
-                  </div>
-                  <span className="text-[10px] font-medium text-slate-300">{app.name}</span>
-                </a>
-              ))}
-            </div>
-            <p className="text-center text-[10px] text-slate-500">Opens on mobile devices</p>
-          </div>
-
-          <div className="h-px bg-[rgba(255,255,255,0.08)]" />
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-2 gap-3">
-            <a
-              href="https://github.com/byrohithreddy/Free-pi"
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#D4AF37] text-[#0A1612] text-sm font-semibold hover:bg-[#b8972e] transition-colors"
-            >
-              <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-              Star
-            </a>
-            <button
-              onClick={handleShare}
-              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#12251e] text-slate-200 text-sm font-semibold hover:bg-[#1f2e26] transition-colors"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                <circle cx="18" cy="5" r="3"/>
-                <circle cx="6" cy="12" r="3"/>
-                <circle cx="18" cy="19" r="3"/>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
-              </svg>
-              Share
-            </button>
-          </div>
+        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+          </span>
+          <span>Open Source Forever</span>
         </div>
       </div>
-    </div>
+
+      {/* Main Donation Container */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.96, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="donate-panel w-full max-w-lg rounded-3xl bg-card border border-border/80 shadow-2xl p-6 sm:p-8 relative z-10 overflow-hidden"
+      >
+        <div className="donate-heading text-center space-y-2 mb-6">
+          <div className="inline-flex items-center justify-center h-12 w-12 rounded-2xl bg-primary/10 text-primary border border-primary/20 shadow-inner mb-1">
+            <Heart className="h-6 w-6 fill-primary/30 text-primary" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
+            Support Free Pi
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground max-w-xs mx-auto">
+            100% peer-to-peer. Zero platform commissions. Help fund server infrastructure & ongoing development.
+          </p>
+        </div>
+
+        {/* Tier Buttons */}
+        <div className="donate-tiers grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-4">
+          {PRESET_TIERS.map((tier) => {
+            const isSelected = !isCustom && amount === tier.amount;
+            const Icon = tier.icon;
+            return (
+              <button
+                key={tier.amount}
+                type="button"
+                aria-pressed={isSelected}
+                onClick={() => {
+                  setIsCustom(false);
+                  setAmount(tier.amount);
+                }}
+                className={`
+                  p-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1
+                  ${isSelected
+                    ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-[1.02]"
+                    : "bg-muted/30 border-border hover:bg-muted/70 text-foreground"}
+                `}
+              >
+                <Icon className={`h-4 w-4 ${isSelected ? "text-primary-foreground" : "text-primary"}`} />
+                <span className="text-sm font-extrabold tabular-nums">₹{tier.amount}</span>
+                <span className={`text-[10px] font-semibold leading-tight ${isSelected ? "text-primary-foreground/90" : "text-muted-foreground"}`}>
+                  {tier.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Custom Amount Button / Input Toggle */}
+        <div className="donate-custom mb-6">
+          {!isCustom ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustom(true);
+                if (!customAmount) setCustomAmount("250");
+              }}
+              className="w-full py-2.5 rounded-xl border border-dashed border-border hover:border-primary/50 text-xs font-bold text-muted-foreground hover:text-foreground transition-all flex items-center justify-center gap-1.5"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>Choose Custom Amount</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">₹</span>
+                <input
+                  type="number"
+                  aria-label="Custom donation amount in rupees"
+                  min="1"
+                  max="100000"
+                  step="1"
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value)}
+                  placeholder="Enter custom amount"
+                  autoFocus
+                  className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-muted/40 border border-primary/50 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary tabular-nums"
+                />
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setIsCustom(false);
+                  setAmount("99");
+                }}
+                className="text-xs text-muted-foreground hover:text-foreground h-10"
+              >
+                Presets
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* QR Code Section */}
+        <div className="donate-code flex flex-col items-center justify-center p-6 rounded-2xl bg-muted/20 border border-border/80 mb-6">
+          <div className="p-3 bg-white rounded-2xl shadow-xl relative group">
+            {qrUrl ? (
+              <img 
+                src={qrUrl} 
+                alt={`UPI payment QR code for ₹${currentDisplayAmount}`}
+                className="w-48 h-48 rounded-xl object-contain transition-transform group-hover:scale-105"
+              />
+            ) : (
+              <div className="w-48 h-48 bg-slate-100 rounded-xl animate-pulse" />
+            )}
+          </div>
+
+          <div className="text-center mt-3">
+            <p className="text-2xl font-black text-foreground tabular-nums">
+              ₹{currentDisplayAmount}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Scan with any UPI app (GPay, PhonePe, Paytm, BHIM)
+            </p>
+          </div>
+        </div>
+
+        {/* UPI ID Copy Bar */}
+        <div className="donate-recipient flex items-center justify-between p-3 rounded-xl bg-card border border-border mb-4">
+          <div className="min-w-0 pr-2">
+            <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Recipient UPI ID</span>
+            <span className="font-mono text-xs sm:text-sm font-semibold text-foreground truncate block">{UPI_ID}</span>
+          </div>
+          <Button
+            size="sm"
+            onClick={handleCopy}
+            className="h-8.5 px-3 rounded-lg text-xs font-bold gap-1.5 shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+            <span>{copied ? "Copied" : "Copy"}</span>
+          </Button>
+        </div>
+
+        {/* Mobile Direct Pay Trigger */}
+        <div className="donate-mobile-pay mb-6">
+          <Button asChild className="w-full h-11 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 gap-2">
+            <a href={upiIntentUrl}>
+              <Smartphone className="h-4 w-4" />
+              <span>Open in UPI App (Mobile)</span>
+            </a>
+          </Button>
+        </div>
+
+        {/* Footer Actions */}
+        <div className="donate-footer-actions grid grid-cols-2 gap-3 pt-3 border-t border-border/60">
+          <Button asChild variant="outline" className="rounded-xl h-10 gap-2 text-xs font-bold">
+            <a href="https://github.com/byrohithreddy/Free-pi" target="_blank" rel="noreferrer">
+              <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+              <span>Star on GitHub</span>
+            </a>
+          </Button>
+
+          <Button 
+            variant="outline" 
+            onClick={handleShare}
+            className="rounded-xl h-10 gap-2 text-xs font-bold"
+          >
+            <Share2 className="h-3.5 w-3.5" />
+            <span>Share Project</span>
+          </Button>
+        </div>
+      </motion.div>
+    </main>
   );
 }
